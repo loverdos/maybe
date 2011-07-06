@@ -30,8 +30,19 @@ class Maybe(info: ProjectInfo) extends DefaultProject(info) {
 
   def extraResources = "LICENSE.txt"
   override def mainResources = super.mainResources +++ extraResources
+  
+  val junitInterface = "com.novocode" % "junit-interface" % "0.6" % "test->default"
+  
+  override def testOptions = 
+    super.testOptions ++ 
+    Seq(TestArgument(TestFrameworks.JUnit, "-q", "-v"))
 
-  val lib_scalatest       = "org.scalatest"  % "scalatest_2.9.0" % "1.4.1"  % "test"     withSources()
+//  val lib_scalatest = "org.scalatest"  %% "scalatest" % "1.4.1"  % "test"     withSources()
+  val lib_scalatest =  buildScalaVersion match {
+    case "2.9.0"   => "org.scalatest" % "scalatest_2.9.0" % "1.6.1"     % "test" withSources()
+    case "2.9.0-1" => "org.scalatest" % "scalatest_2.9.0" % "1.6.1"     % "test" withSources()
+    case v         => error("Unsupported Scala version " + v)
+  }
 
   override def packageDocsJar = defaultJarPath("-javadoc.jar")
   override def packageSrcJar= defaultJarPath("-sources.jar")

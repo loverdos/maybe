@@ -22,12 +22,13 @@ import org.scalatest.FlatSpec
  * 
  * @author Christos KK Loverdos <loverdos@gmail.com>.
  */
+
 class MaybeTest extends FlatSpec {
 
   behavior of "Maybe"
 
   it should "translate null to Nil" in {
-    assert(Maybe(null) === Nil)
+    assert(Maybe(null) === NoVal)
   }
 
   it should "translate a non-null value x to Just(x)" in {

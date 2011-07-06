@@ -31,7 +31,7 @@ sealed abstract class Maybe[+A] extends Equals {
   def toList: List[A]
 
   def isJust: Boolean
-  def isNil: Boolean
+  def isNoVal: Boolean
   def isFailed: Boolean
 
   def getOr[B >: A](b: => B): B
@@ -56,8 +56,8 @@ sealed abstract class Maybe[+A] extends Equals {
     if(isJust) f(this.asInstanceOf[Just[A]]) else this
 
   @inline
-  final def forNil[B >: A](f: => Maybe[B]): Maybe[B] =
-    if(isNil) f else this
+  final def forNoVal[B >: A](f: => Maybe[B]): Maybe[B] =
+    if(isNoVal) f else this
 
   @inline
   final def forFailed[B >: A, T, S](f: Failed[T] => Maybe[B]): Maybe[B] =
@@ -85,22 +85,22 @@ object Maybe {
 
   implicit def optionToBox[T](x: Option[T]) = x match {
     case Some(c) => Just(c)
-    case None    => Nil
+    case None    => NoVal
   }
 
   /**
    * This is a polymorphic constructor for Maybes.
-   * Use it if you are not sure what to expect.
+   * Use it if you are not sure what to expect from `x`.
    */
   def apply[A](x: => A) = {
     try {
       val value = x
       value match {
-        case null => Nil
+        case null => NoVal
         case _    => Just(value)
       }
     } catch {
-      case e: Throwable => Failed(Some("Maybe() failed"), Just(e), Nil, Nil)
+      case e: Throwable => Failed(Some("Maybe() failed"), Just(e), NoVal, NoVal)
     }
   }
 }
@@ -122,7 +122,7 @@ final case class Just[@specialized(Boolean, Char, Int, Double) +A](get: A) exten
 
   def isJust = true
   def isFailed = false
-  def isNil = false
+  def isNoVal = false
 
   def getOr[B >: A](b: => B) = get
 
@@ -133,7 +133,7 @@ final case class Just[@specialized(Boolean, Char, Int, Double) +A](get: A) exten
 
   def map[B](f: (A) => B)= Just(f(get))
   def flatMap[B](f: (A) => Maybe[B]) = f(get)
-  def filter(f: (A) => Boolean): Maybe[A] = if(f(get)) this else Nil
+  def filter(f: (A) => Boolean): Maybe[A] = if(f(get)) this else NoVal
   def foreach(f: A => Unit) = f(get)
 
   protected def equalsImpl(that: Maybe[_]) = that match {
@@ -142,15 +142,15 @@ final case class Just[@specialized(Boolean, Char, Int, Double) +A](get: A) exten
   }
 }
 
-case object Nil extends Maybe[Nothing] {
+case object NoVal extends Maybe[Nothing] {
   def toIterator    = Maybe.MaybeEmptyIterator
   def toTraversable = Maybe.MaybeEmptyTraversable
   def toOption      = None
   def toList        = Maybe.MaybeEmptyList
 
-  def isJust= false
-  def isNil = true
-  def isFailed= false
+  def isJust   = false
+  def isNoVal  = true
+  def isFailed = false
 
   def getOr[B >: Nothing](b: => B) = b
 
@@ -159,13 +159,13 @@ case object Nil extends Maybe[Nothing] {
 
   def ||[B >: Nothing](f: => Maybe[B]) = f
 
-  def map[B](f: (Nothing) => B)= Nil
-  def flatMap[B](f: (Nothing) => Maybe[B]) = Nil
-  def filter(f: (Nothing) => Boolean) = Nil
+  def map[B](f: (Nothing) => B)= NoVal
+  def flatMap[B](f: (Nothing) => Maybe[B]) = NoVal
+  def filter(f: (Nothing) => Boolean) = NoVal
   def foreach(f: Nothing => Unit) = {}
 
   protected def equalsImpl(that: Maybe[_]) = that match {
-    case Nil => true
+    case NoVal => true
     case _     => false
   }
 }
@@ -180,7 +180,7 @@ final case class Failed[T: Manifest](
   def typeOfData = manifest[T]
 
   def isJust   = false
-  def isNil    = false
+  def isNoVal  = false
   def isFailed = true
 
   def toIterator    = Maybe.MaybeEmptyIterator

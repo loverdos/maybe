@@ -17,18 +17,24 @@
 package com.ckkloverdos
 
 package object maybe {
-  def maybe[A](f: => A)(_catch: => Unit)(_finally: => Unit): Maybe[A] = {
+  @inline
+  final def ignoreExceptions(f: => Any): Unit = {
+    try f
+    catch { case _ => } finally {}
+  }
+  
+  def effect[A](f: => A)(_catch: => Unit)(_finally: => Unit): Maybe[A] = {
     try {
       f match {
-        case null => Nil
+        case null => NoVal
         case a    => Just(a)
       }
     } catch {
       case e: Throwable =>
-        try _catch catch { case _ => } finally {}
-        Failed(Nil, Just(e), Nil, Nil)
+        ignoreExceptions (_catch)
+        Failed(NoVal, Just(e), NoVal, NoVal)
     } finally {
-      try _finally catch { case _ => } finally {}
+      ignoreExceptions(_finally)
     }
   }
 
