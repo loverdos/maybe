@@ -32,11 +32,12 @@ package object maybe {
     } catch {
       case e: Throwable =>
         ignoreExceptions (_catch)
-        Failed(NoVal, Just(e), NoVal, NoVal)
+        Failed(e)
     } finally {
       ignoreExceptions(_finally)
     }
   }
 
+  @inline
   def safe[A](f: => A): Maybe[A] = Maybe(f)
 }

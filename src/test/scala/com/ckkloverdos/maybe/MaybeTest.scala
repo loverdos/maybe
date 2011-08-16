@@ -27,17 +27,17 @@ class MaybeTest extends FlatSpec {
 
   behavior of "Maybe"
 
-  it should "translate null to Nil" in {
+  it should ("translate null to " + NoVal) in {
     assert(Maybe(null) === NoVal)
   }
 
   it should "translate a non-null value x to Just(x)" in {
     val items = List(
-    1,
-    "Hello world",
-    (x: Int) => x * x,
-    new java.lang.Double(2.0),
-    List(1, 2, 3)
+      1,
+      "Hello world",
+      (x: Int) => x * x,
+      new java.lang.Double(2.0),
+      List(1, 2, 3)
     )
 
     for(item <- items) {
@@ -45,7 +45,7 @@ class MaybeTest extends FlatSpec {
     }
   }
 
-  it should "translate a body that throws an exception to a Failed()" in {
+  it should "translate a body that throws an exception to a Failed(exception)" in {
     assert(Maybe(throw new Exception).isFailed)
   }
 }

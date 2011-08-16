@@ -49,7 +49,15 @@ sealed abstract class Maybe[+A] extends Equals {
 
   def foreach(f: A => Unit): Unit
 
-  def fold[T](onJust: => T, onNil: => T, onFailed: => T): T
+  def fold[T](onJust: (A) => T)(onNoVal: => T)(onFailed: (Failed) => T): T
+
+  @inline
+  final def fold_[T](onJust: => T)(onNoVal: => T)(onFailed: => T): T =
+    fold(a => onJust)(onNoVal)(f => onFailed)
+
+  @inline
+  final def foldJust[T](onJust: (A) => T)(onOther: => T): T =
+    fold(onJust)(onOther)(f => onOther)
 
   @inline
   final def forJust[B >: A](f: Just[A] => Maybe[B]): Maybe[B] =
@@ -60,8 +68,8 @@ sealed abstract class Maybe[+A] extends Equals {
     if(isNoVal) f else this
 
   @inline
-  final def forFailed[B >: A, T, S](f: Failed[T] => Maybe[B]): Maybe[B] =
-    if(isFailed) f(this.asInstanceOf[Failed[T]]) else this
+  final def forFailed[B >: A](f: Failed => Maybe[B]): Maybe[B] =
+    if(isFailed) f(this.asInstanceOf[Failed]) else this
 
   def canEqual(that: Any): Boolean = that match {
     case _: Maybe[_] => true
@@ -77,7 +85,7 @@ sealed abstract class Maybe[+A] extends Equals {
 }
 
 object Maybe {
-  type AnyFailure = Failed[_]
+  type AnyFailure = Failed
   val MaybeEmptyIterator   : Iterator   [Nothing] = Iterator   ()
   val MaybeEmptyTraversable: Traversable[Nothing] = Traversable()
   val MaybeEmptyList       : List       [Nothing] = List       ()
@@ -100,19 +108,10 @@ object Maybe {
         case _    => Just(value)
       }
     } catch {
-      case e: Throwable => Failed(Some("Maybe() failed"), Just(e), NoVal, NoVal)
+      case e: Throwable => Failed(e, "Maybe() failed")
     }
   }
 }
-
-//object Just {
-//  def apply[A](x: => A): Maybe[A] = Maybe(x)
-//
-//  def unapply[A](x: A): Option[A] = x match {
-//    case null => None
-//    case _    => Some(x)
-//  }
-//}
 
 final case class Just[@specialized(Boolean, Char, Int, Double) +A](get: A) extends Maybe[A] {
   def toIterator    = Iterator(get)
@@ -126,8 +125,7 @@ final case class Just[@specialized(Boolean, Char, Int, Double) +A](get: A) exten
 
   def getOr[B >: A](b: => B) = get
 
-  def fold[T](onJust: => T, onNil: => T, onFailed: => T): T =
-    onJust
+  def fold[T](onJust: (A) => T)(onOnVal: => T)(onFailed: (Failed) => T) = onJust(get)
 
   def ||[B >: A](f: => Maybe[B]) = this
 
@@ -138,7 +136,7 @@ final case class Just[@specialized(Boolean, Char, Int, Double) +A](get: A) exten
 
   protected def equalsImpl(that: Maybe[_]) = that match {
     case Just(v) => v == get
-    case _         => false
+    case _       => false
   }
 }
 
@@ -154,8 +152,7 @@ case object NoVal extends Maybe[Nothing] {
 
   def getOr[B >: Nothing](b: => B) = b
 
-  def fold[T](onJust: => T, onNil: => T, onFailed: => T): T =
-    onNil
+  def fold[T](onJust: (Nothing) => T)(onNoVal: => T)(onFailed: (Failed)=> T) = onNoVal
 
   def ||[B >: Nothing](f: => Maybe[B]) = f
 
@@ -170,14 +167,10 @@ case object NoVal extends Maybe[Nothing] {
   }
 }
 
-final case class Failed[T: Manifest](
-  message: Maybe[String],
-  exception: Maybe[Throwable],
-  cause: Maybe[Failed[_]],
-  data: Maybe[T]
-  ) extends Maybe[Nothing] {
-
-  def typeOfData = manifest[T]
+/**
+ * A Maybe wrapper for an exception.
+ */
+final case class Failed private[maybe](exception: Throwable, explanation: String) extends Maybe[Nothing] {
 
   def isJust   = false
   def isNoVal  = false
@@ -191,8 +184,7 @@ final case class Failed[T: Manifest](
 
   def getOr[B >: Nothing](b: => B) = b
 
-  def fold[T](onJust: => T, onNil: => T, onFailed: => T): T =
-    onFailed
+  def fold[T](onJust: (Nothing) => T)(onNoVal: => T)(onFailed: (Failed)=> T) = onFailed(this)
 
   def ||[B >: Nothing](f: => Maybe[B]) = f
 
@@ -202,12 +194,13 @@ final case class Failed[T: Manifest](
   def foreach(f: Nothing => Unit) = {}
 
   protected def equalsImpl(that: Maybe[_]) = that match {
-    case Failed(mO, eO, cO, dB) =>
-      mO == message &&
-      eO == exception &&
-      cO == cause &&
-      dB == data
+    case Failed(eO, ex0) => eO == exception && ex0 == explanation
     case _ => false
   }
 }
 
+object Failed {
+  def apply(exception: Throwable): Failed = Failed(exception)
+  def apply(exception: Throwable, explanation: String, explanationArgs: Any*): Failed =
+    Failed(exception, explanation.format(explanationArgs))
+}
