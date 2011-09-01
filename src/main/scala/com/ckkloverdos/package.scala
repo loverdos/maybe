@@ -39,5 +39,5 @@ package object maybe {
   }
 
   @inline
-  def safe[A](f: => A): Maybe[A] = Maybe(f)
+  final def safe[A](f: => A): Maybe[A] = Maybe(f)
 }

@@ -73,7 +73,7 @@ sealed abstract class Maybe[+A] extends Equals {
 
   def canEqual(that: Any): Boolean = that match {
     case _: Maybe[_] => true
-    case _         => false
+    case _           => false
   }
 
   override def equals(that: Any) = that match {
@@ -84,8 +84,24 @@ sealed abstract class Maybe[+A] extends Equals {
   protected def equalsImpl(that: Maybe[_]): Boolean
 }
 
+/**
+ * A Maybe that can be either a Just or a NoVal. So, this is like Scala's Option
+ */
+sealed abstract class MaybeOption[+A] extends Maybe[A] {
+  override def canEqual(that: Any): Boolean = that match {
+    case _: MaybeOption[_] => true
+    case _                 => false
+  }
+}
+
+object MaybeOption {
+  def apply[A](x: => A): MaybeOption[A] = Maybe(x) match {
+    case j@Just(_) => j
+    case _         => NoVal
+  }
+}
+
 object Maybe {
-  type AnyFailure = Failed
   val MaybeEmptyIterator   : Iterator   [Nothing] = Iterator   ()
   val MaybeEmptyTraversable: Traversable[Nothing] = Traversable()
   val MaybeEmptyList       : List       [Nothing] = List       ()
@@ -100,7 +116,7 @@ object Maybe {
    * This is a polymorphic constructor for Maybes.
    * Use it if you are not sure what to expect from `x`.
    */
-  def apply[A](x: => A) = {
+  def apply[A](x: => A): Maybe[A] = {
     try {
       val value = x
       value match {
@@ -108,12 +124,12 @@ object Maybe {
         case _    => Just(value)
       }
     } catch {
-      case e: Throwable => Failed(e, "Maybe() failed")
+      case e: Throwable => Failed(e, "Maybe.apply()")
     }
   }
 }
 
-final case class Just[@specialized(Boolean, Char, Int, Double) +A](get: A) extends Maybe[A] {
+final case class Just[@specialized(Boolean, Char, Int, Double) +A](get: A) extends MaybeOption[A] {
   def toIterator    = Iterator(get)
   def toTraversable = Traversable(get)
   def toOption      = Some(get)
@@ -140,7 +156,7 @@ final case class Just[@specialized(Boolean, Char, Int, Double) +A](get: A) exten
   }
 }
 
-case object NoVal extends Maybe[Nothing] {
+case object NoVal extends MaybeOption[Nothing] {
   def toIterator    = Maybe.MaybeEmptyIterator
   def toTraversable = Maybe.MaybeEmptyTraversable
   def toOption      = None
