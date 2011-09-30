@@ -16,36 +16,36 @@
 
 package com.ckkloverdos.maybe
 
-import org.scalatest.FlatSpec
+import org.junit.Assert
+import org.junit.Test
 
 /**
  * 
  * @author Christos KK Loverdos <loverdos@gmail.com>.
  */
 
-class MaybeTest extends FlatSpec {
-
-  behavior of "Maybe"
-
-  it should ("translate null to " + NoVal) in {
-    assert(Maybe(null) === NoVal)
+class MaybeTest {
+  @Test
+  def testNullToNoVal = {
+    Assert.assertTrue(Maybe(null) == NoVal)
   }
 
-  it should "translate a non-null value x to Just(x)" in {
+  @Test
+  def testNotNullToJust = {
     val items = List(
       1,
       "Hello world",
       (x: Int) => x * x,
       new java.lang.Double(2.0),
-      List(1, 2, 3)
-    )
+      List(1, 2, 3))
 
     for(item <- items) {
-      assert(Maybe(item) === Just(item))
+      Assert.assertTrue(Maybe(item).isJust)
     }
   }
 
-  it should "translate a body that throws an exception to a Failed(exception)" in {
-    assert(Maybe(throw new Exception).isFailed)
+  @Test
+  def testExceptionToFailed = {
+    Assert.assertTrue(Maybe(throw new Exception).isFailed)
   }
 }

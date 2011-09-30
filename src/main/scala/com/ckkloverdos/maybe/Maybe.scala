@@ -150,10 +150,8 @@ final case class Just[@specialized(Boolean, Char, Int, Double) +A](get: A) exten
   def filter(f: (A) => Boolean): Maybe[A] = if(f(get)) this else NoVal
   def foreach(f: A => Unit) = f(get)
 
-  protected def equalsImpl(that: Maybe[_]) = that match {
-    case Just(v) => v == get
-    case _       => false
-  }
+  protected def equalsImpl(that: Maybe[_]) =
+    that.getClass == classOf[Just[_]] && that.asInstanceOf[Just[_]].get == this.get
 }
 
 case object NoVal extends MaybeOption[Nothing] {
@@ -177,10 +175,7 @@ case object NoVal extends MaybeOption[Nothing] {
   def filter(f: (Nothing) => Boolean) = NoVal
   def foreach(f: Nothing => Unit) = {}
 
-  protected def equalsImpl(that: Maybe[_]) = that match {
-    case NoVal => true
-    case _     => false
-  }
+  protected def equalsImpl(that: Maybe[_]) = that eq NoVal
 }
 
 /**
