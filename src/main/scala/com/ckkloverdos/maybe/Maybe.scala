@@ -71,15 +71,14 @@ sealed abstract class Maybe[+A] extends Equals {
   final def forFailed[B >: A](f: Failed => Maybe[B]): Maybe[B] =
     if(isFailed) f(this.asInstanceOf[Failed]) else this
 
-  def canEqual(that: Any): Boolean = that match {
-    case _: Maybe[_] => true
-    case _           => false
-  }
+  def canEqual(that: Any): Boolean = that.isInstanceOf[Maybe[_]]
 
   override def equals(that: Any) = that match {
     case b: Maybe[_] if b.canEqual(this) => equalsImpl(b)
     case _ => false
   }
+  
+  def castTo[B: Manifest]: MaybeOption[B]
 
   protected def equalsImpl(that: Maybe[_]): Boolean
 }
@@ -107,7 +106,7 @@ object Maybe {
   val MaybeEmptyList       : List       [Nothing] = List       ()
   val MaybeEmptySet        : Set        [Nothing] = Set        ()
 
-  implicit def optionToBox[T](x: Option[T]) = x match {
+  implicit def optionToMaybe[T](x: Option[T]) = x match {
     case Some(c) => Just(c)
     case None    => NoVal
   }
@@ -149,6 +148,11 @@ final case class Just[@specialized(Boolean, Char, Int, Double) +A](get: A) exten
   def flatMap[B](f: (A) => Maybe[B]) = f(get)
   def filter(f: (A) => Boolean): Maybe[A] = if(f(get)) this else NoVal
   def foreach(f: A => Unit) = f(get)
+  
+  def castTo[B: Manifest] = get match {
+    case null  => NoVal // normally null should not even be here but we are being cautious
+    case value => if(manifest[B].erasure.isInstance(value)) this.asInstanceOf[MaybeOption[B]] else NoVal
+  }
 
   protected def equalsImpl(that: Maybe[_]) =
     that.getClass == classOf[Just[_]] && that.asInstanceOf[Just[_]].get == this.get
@@ -174,6 +178,8 @@ case object NoVal extends MaybeOption[Nothing] {
   def flatMap[B](f: (Nothing) => Maybe[B]) = NoVal
   def filter(f: (Nothing) => Boolean) = NoVal
   def foreach(f: Nothing => Unit) = {}
+  
+  def castTo[B: Manifest]: MaybeOption[B] = NoVal
 
   protected def equalsImpl(that: Maybe[_]) = that eq NoVal
 }
@@ -181,8 +187,8 @@ case object NoVal extends MaybeOption[Nothing] {
 /**
  * A Maybe wrapper for an exception.
  */
-final case class Failed private[maybe](exception: Throwable, explanation: String) extends Maybe[Nothing] {
-
+final case class Failed(exception: Throwable, explanation: String = "") extends Maybe[Nothing] {
+  def this(exception: Throwable, fmt: String, args: Any*) = this(exception, fmt.format(args))
   def isJust   = false
   def isNoVal  = false
   def isFailed = true
@@ -203,15 +209,11 @@ final case class Failed private[maybe](exception: Throwable, explanation: String
   def flatMap[B](f: (Nothing) => Maybe[B]) = this
   def filter(f: (Nothing) => Boolean) = this
   def foreach(f: Nothing => Unit) = {}
+  
+  def castTo[B: Manifest]: MaybeOption[B] = NoVal
 
   protected def equalsImpl(that: Maybe[_]) = that match {
-    case Failed(eO, ex0) => eO == exception && ex0 == explanation
+    case Failed(otherException, otherExplanation) => otherException == this.exception && otherExplanation == explanation
     case _ => false
   }
-}
-
-object Failed {
-  def apply(exception: Throwable): Failed = Failed(exception)
-  def apply(exception: Throwable, explanation: String, explanationArgs: Any*): Failed =
-    Failed(exception, explanation.format(explanationArgs))
 }
