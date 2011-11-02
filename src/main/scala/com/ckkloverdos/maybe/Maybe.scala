@@ -41,6 +41,8 @@ sealed abstract class Maybe[+A] {
   def map[B](f: A => B): Maybe[B]
 
   def flatMap[B](f: A => Maybe[B]): Maybe[B]
+  
+  def defMap[B](default: => B)(f: A => B): B = map(f) getOr default
 
   @inline
   final def >>[B](f: A => Maybe[B]): Maybe[B] = this.flatMap(f)
