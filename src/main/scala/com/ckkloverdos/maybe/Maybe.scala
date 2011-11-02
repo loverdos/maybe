@@ -199,6 +199,9 @@ case object NoVal extends MaybeOption[Nothing] with MaybeFailed {
  * A Maybe wrapper for an exception.
  */
 final case class Failed(exception: Throwable, explanation: String = "") extends Maybe[Nothing] with MaybeFailed {
+  require(exception ne null, "Exception is null")
+  require(explanation ne null, "Explanation is null")
+
   def this(exception: Throwable, fmt: String, args: Any*) = this(exception, fmt.format(args))
   def isJust   = false
   def isNoVal  = false
