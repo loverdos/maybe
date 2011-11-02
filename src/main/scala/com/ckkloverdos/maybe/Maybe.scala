@@ -151,7 +151,7 @@ final case class Just[@specialized +A](get: A) extends MaybeOption[A] {
 
   def ||[B >: A](f: => Maybe[B]) = this
 
-  def map[B](f: (A) => B)= Just(f(get))
+  def map[B](f: (A) => B)= Maybe(f(get))
   def flatMap[B](f: (A) => Maybe[B]) = f(get)
   def filter(f: (A) => Boolean): Maybe[A] = if(f(get)) this else NoVal
   def foreach(f: A => Unit) = f(get)
