@@ -32,7 +32,7 @@ package object maybe {
     } catch {
       case e: Throwable =>
         ignoreExceptions (_catch)
-        Failed(e)
+        Failed(e, "effect{}")
     } finally {
       ignoreExceptions(_finally)
     }

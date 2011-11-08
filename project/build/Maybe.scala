@@ -59,6 +59,7 @@ class Maybe(info: ProjectInfo) extends DefaultProject(info) {
       <developer>
         <id>loverdos</id>
         <name>Christos KK Loverdos</name>
+        <email>loverdos@gmail.com</email>
       </developer>
     </developers>;
 

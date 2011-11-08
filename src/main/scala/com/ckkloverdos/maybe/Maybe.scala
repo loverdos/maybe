@@ -133,6 +133,8 @@ object Maybe {
       case e: Throwable => Failed(e, "Maybe.apply()")
     }
   }
+
+  def failed(exception: Throwable, fmt: String, args: Any*) = Failed(exception, fmt.format(args: _*))
 }
 
 final case class Just[@specialized +A](get: A) extends MaybeOption[A] {

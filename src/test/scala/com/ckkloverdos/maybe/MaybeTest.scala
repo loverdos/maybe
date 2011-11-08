@@ -92,4 +92,16 @@ class MaybeTest {
   def testFlatten1 {
     Assert.assertEquals(Maybe("foo"), Maybe(Maybe("foo")).flatten1)
   }
+
+  @Test
+  def testCastNullToNoVal {
+    Assert.assertEquals(NoVal, Just(null).castTo[Int])
+  }
+
+  @Test
+  def testCastTo {
+    val help = "Help"
+    val aJust: Maybe[_] = Just(help)
+    Assert.assertTrue(aJust.castTo[CharSequence].isJust)
+  }
 }
