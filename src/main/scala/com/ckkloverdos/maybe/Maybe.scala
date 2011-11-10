@@ -82,9 +82,9 @@ sealed abstract class Maybe[+A] {
 }
 
 /**
- * A Maybe that can be either a Just or a NoVal. So, this is like Scala's Option
+ * A Maybe that can be either a Just or a NoVal. So, this is like Scala's Option.
  */
-sealed abstract class MaybeOption[+A] extends Maybe[A]
+sealed trait  MaybeOption[+A] extends Maybe[A]
 
 object MaybeOption {
   def apply[A](x: => A): MaybeOption[A] = Maybe(x) match {
@@ -94,16 +94,18 @@ object MaybeOption {
 }
 
 /**
- * A maybe that has either failed (`Failed`) or not (`NoVal`).
- *
- * So success is clearly represented by `NoVal`
+ * A Maybe that can be either a Just or a Failed. So, this is like Scala's Either.
  */
-sealed trait MaybeFailed extends Maybe[Nothing]
+sealed trait MaybeFailed[+A] extends Maybe[A]
 
 object MaybeFailed {
-  def apply[A](x: => A): MaybeFailed = Maybe(x) match {
-    case f@Failed(_,_) => f
-    case _             => NoVal
+  def apply[A](x: => A): MaybeFailed[A] = Maybe(x) match {
+    case j@Just(_) =>
+      j
+    case f@Failed(_,_) =>
+      f
+    case NoVal =>
+      Failed(new Exception("Got NoVal for a MaybeFailed"))
   }
 }
 
@@ -137,7 +139,7 @@ object Maybe {
   def failed(exception: Throwable, fmt: String, args: Any*) = Failed(exception, fmt.format(args: _*))
 }
 
-final case class Just[@specialized +A](get: A) extends MaybeOption[A] {
+final case class Just[@specialized +A](get: A) extends MaybeOption[A] with MaybeFailed[A] {
   def toIterator    = Iterator(get)
   def toTraversable = Traversable(get)
   def toOption      = Some(get)
@@ -169,7 +171,7 @@ final case class Just[@specialized +A](get: A) extends MaybeOption[A] {
     that.isInstanceOf[Just[_]] && that.asInstanceOf[Just[_]].get == this.get
 }
 
-case object NoVal extends MaybeOption[Nothing] with MaybeFailed {
+case object NoVal extends MaybeOption[Nothing] with MaybeFailed[Nothing] {
   def toIterator    = Maybe.MaybeEmptyIterator
   def toTraversable = Maybe.MaybeEmptyTraversable
   def toOption      = None
@@ -200,7 +202,7 @@ case object NoVal extends MaybeOption[Nothing] with MaybeFailed {
 /**
  * A Maybe wrapper for an exception.
  */
-final case class Failed(exception: Throwable, explanation: String = "") extends Maybe[Nothing] with MaybeFailed {
+final case class Failed(exception: Throwable, explanation: String = "") extends Maybe[Nothing] with MaybeFailed[Nothing] {
   require(exception ne null, "Exception is null")
   require(explanation ne null, "Explanation is null")
 
