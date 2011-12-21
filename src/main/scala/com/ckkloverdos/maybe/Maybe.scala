@@ -17,6 +17,7 @@
 package com.ckkloverdos.maybe
 
 import collection.Iterator
+import collection.generic.CanBuildFrom
 
 /**
  * Inspired by Lift's Box, Haskell's Maybe and Scala's Option.
@@ -96,10 +97,10 @@ object MaybeOption {
 /**
  * A Maybe that can be either a Just or a Failed. So, this is like Scala's Either.
  */
-sealed trait MaybeFailed[+A] extends Maybe[A]
+sealed trait MaybeEither[+A] extends Maybe[A]
 
-object MaybeFailed {
-  def apply[A](x: => A): MaybeFailed[A] = Maybe(x) match {
+object MaybeEither {
+  def apply[A](x: => A): MaybeEither[A] = Maybe(x) match {
     case j@Just(_) =>
       j
     case f@Failed(_,_) =>
@@ -139,7 +140,7 @@ object Maybe {
   def failed(exception: Throwable, fmt: String, args: Any*) = Failed(exception, fmt.format(args: _*))
 }
 
-final case class Just[@specialized +A](get: A) extends MaybeOption[A] with MaybeFailed[A] {
+final case class Just[@specialized +A](get: A) extends MaybeOption[A] with MaybeEither[A] {
   def toIterator    = Iterator(get)
   def toTraversable = Traversable(get)
   def toOption      = Some(get)
@@ -171,7 +172,7 @@ final case class Just[@specialized +A](get: A) extends MaybeOption[A] with Maybe
     that.isInstanceOf[Just[_]] && that.asInstanceOf[Just[_]].get == this.get
 }
 
-case object NoVal extends MaybeOption[Nothing] with MaybeFailed[Nothing] {
+case object NoVal extends MaybeOption[Nothing] {
   def toIterator    = Maybe.MaybeEmptyIterator
   def toTraversable = Maybe.MaybeEmptyTraversable
   def toOption      = None
@@ -202,7 +203,7 @@ case object NoVal extends MaybeOption[Nothing] with MaybeFailed[Nothing] {
 /**
  * A Maybe wrapper for an exception.
  */
-final case class Failed(exception: Throwable, explanation: String = "") extends Maybe[Nothing] with MaybeFailed[Nothing] {
+final case class Failed(exception: Throwable, explanation: String = "") extends MaybeEither[Nothing] {
   require(exception ne null, "Exception is null")
   require(explanation ne null, "Explanation is null")
 
@@ -231,6 +232,14 @@ final case class Failed(exception: Throwable, explanation: String = "") extends 
   def castTo[B: Manifest]: MaybeOption[B] = NoVal
 
   def flatten1[U](implicit ev: <:<[Nothing, Maybe[U]]) = this
+  
+  def detailedMessage: String = {
+    if(explanation.trim.length > 0) {
+      "%s:[%s] %s".format(explanation, exception.getClass.getName, exception.getMessage)
+    } else {
+      "[%s] %s".format(exception.getClass.getName, exception.getMessage)
+    }
+  }
 
   override def equals(that: Any) =
     that.isInstanceOf[Failed] &&
