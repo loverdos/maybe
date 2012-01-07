@@ -17,7 +17,6 @@
 package com.ckkloverdos.maybe
 
 import collection.Iterator
-import collection.generic.CanBuildFrom
 
 /**
  * Inspired by Lift's Box, Haskell's Maybe and Scala's Option.
@@ -46,7 +45,7 @@ sealed abstract class Maybe[+A] {
   def defMap[B](default: => B)(f: A => B): B = map(f) getOr default
 
   @inline
-  final def >>[B](f: A => Maybe[B]): Maybe[B] = this.flatMap(f)
+  final def >>[B](f: A => Maybe[B]): Maybe[B] = this flatMap f
 
   def filter(f: A => Boolean): Maybe[A]
 

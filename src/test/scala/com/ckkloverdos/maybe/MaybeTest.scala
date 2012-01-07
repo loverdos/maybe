@@ -104,4 +104,11 @@ class MaybeTest {
     val aJust: Maybe[_] = Just(help)
     Assert.assertTrue(aJust.castTo[CharSequence].isJust)
   }
+
+  @Test
+  def testCastTo2 {
+    val help = "Help"
+    val aJust: Maybe[_] = Just(help)
+    Assert.assertFalse(aJust.castTo[Int].isJust)
+  }
 }
