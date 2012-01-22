@@ -61,9 +61,8 @@ class MaybeTest {
   @Test
   def testMatchFailed = {
     val Except = new Exception("Hello")
-    val Explan = "Hello there"
-    Failed(Except, Explan) match {
-      case Failed(Except, Explan) => ()
+    Failed(Except) match {
+      case Failed(Except) => ()
       case _ => Assert.assertFalse(true)
     }
   }

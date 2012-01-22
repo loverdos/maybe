@@ -102,7 +102,7 @@ object MaybeEither {
   def apply[A](x: => A): MaybeEither[A] = Maybe(x) match {
     case j@Just(_) =>
       j
-    case f@Failed(_,_) =>
+    case f@Failed(_) =>
       f
     case NoVal =>
       Failed(new Exception("Got NoVal for a MaybeFailed"))
@@ -132,11 +132,9 @@ object Maybe {
         case _    => Just(value)
       }
     } catch {
-      case e: Throwable => Failed(e, "Maybe.apply()")
+      case e: Throwable => Failed(e)
     }
   }
-
-  def failed(exception: Throwable, fmt: String, args: Any*) = Failed(exception, fmt.format(args: _*))
 }
 
 final case class Just[@specialized +A](get: A) extends MaybeOption[A] with MaybeEither[A] {
@@ -202,11 +200,9 @@ case object NoVal extends MaybeOption[Nothing] {
 /**
  * A Maybe wrapper for an exception.
  */
-final case class Failed(exception: Throwable, explanation: String = "") extends MaybeEither[Nothing] {
-  require(exception ne null, "Exception is null")
-  require(explanation ne null, "Explanation is null")
+final case class Failed(cause: Throwable) extends MaybeEither[Nothing] {
+  require(cause ne null, "cause is null")
 
-  def this(exception: Throwable, fmt: String, args: Any*) = this(exception, fmt.format(args))
   def isJust   = false
   def isNoVal  = false
   def isFailed = true
@@ -233,15 +229,9 @@ final case class Failed(exception: Throwable, explanation: String = "") extends 
   def flatten1[U](implicit ev: <:<[Nothing, Maybe[U]]) = this
   
   def detailedMessage: String = {
-    if(explanation.trim.length > 0) {
-      "%s:[%s] %s".format(explanation, exception.getClass.getName, exception.getMessage)
-    } else {
-      "[%s] %s".format(exception.getClass.getName, exception.getMessage)
-    }
+    "[%s] %s".format(cause.getClass.getName, cause.getMessage)
   }
 
   override def equals(that: Any) =
-    that.isInstanceOf[Failed] &&
-      that.asInstanceOf[Failed].exception   == this.exception &&
-      that.asInstanceOf[Failed].explanation == this.explanation
+    that.isInstanceOf[Failed] && that.asInstanceOf[Failed].cause   == this.cause
 }
