@@ -18,6 +18,7 @@ package com.ckkloverdos.maybe
 
 import org.junit.Assert
 import org.junit.Test
+import java.io.File
 
 /**
  * 
@@ -33,24 +34,24 @@ class MaybeTest {
     List(1, 2, 3))
   
   @Test
-  def testNullToNoVal = {
+  def testNullToNoVal: Unit = {
     Assert.assertTrue(Maybe(null) == NoVal)
   }
 
   @Test
-  def testNotNullToJust = {
+  def testNotNullToJust: Unit = {
     for(item <- items) {
       Assert.assertTrue(Maybe(item).isJust)
     }
   }
 
   @Test
-  def testExceptionToFailed = {
+  def testExceptionToFailed: Unit = {
     Assert.assertTrue(Maybe(throw new Exception).isFailed)
   }
 
   @Test
-  def testMatchJust = {
+  def testMatchJust: Unit = {
     val Hello = "Hello"
     Just(Hello) match {
       case Just(Hello) => ()
@@ -59,7 +60,7 @@ class MaybeTest {
   }
 
   @Test
-  def testMatchFailed = {
+  def testMatchFailed: Unit = {
     val Except = new Exception("Hello")
     Failed(Except) match {
       case Failed(Except) => ()
@@ -68,7 +69,7 @@ class MaybeTest {
   }
 
   @Test
-  def testMatchNoVal = {
+  def testMatchNoVal: Unit = {
     NoVal match {
       case NoVal => ()
       case _ => Assert.assertFalse(true)
@@ -76,38 +77,60 @@ class MaybeTest {
   }
 
   @Test
-  def testEqJust {
+  def testEqJust: Unit = {
     for(item <- items) {
       Assert.assertEquals(Just(item), Just(item))
     }
   }
 
   @Test
-  def testEqNoVal {
+  def testEqNoVal: Unit = {
     Assert.assertEquals(NoVal, NoVal)
   }
 
   @Test
-  def testFlatten1 {
+  def testFlatten1: Unit = {
     Assert.assertEquals(Maybe("foo"), Maybe(Maybe("foo")).flatten1)
   }
 
   @Test
-  def testCastNullToNoVal {
+  def testCastNullToNoVal: Unit = {
     Assert.assertEquals(NoVal, Just(null).castTo[Int])
   }
 
   @Test
-  def testCastTo {
+  def testCastTo: Unit = {
     val help = "Help"
     val aJust: Maybe[_] = Just(help)
     Assert.assertTrue(aJust.castTo[CharSequence].isJust)
   }
 
   @Test
-  def testCastTo2 {
+  def testCastTo2: Unit = {
     val help = "Help"
     val aJust: Maybe[_] = Just(help)
     Assert.assertFalse(aJust.castTo[Int].isJust)
+  }
+
+  @Test
+  def testFinallyMap: Unit = {
+    var _flag = false
+    class TesterCursor {
+      var closed = false
+
+      def doit() = 1
+
+      def close() = {
+        closed = true
+        _flag = true
+      }
+    }
+
+    class Tester {
+      def newCursor = new TesterCursor
+    }
+
+    val tester = new Tester
+    tester.maybe.map(_.newCursor).finallyMap(_.close())(_.doit())
   }
 }

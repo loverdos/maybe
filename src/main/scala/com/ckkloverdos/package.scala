@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2011 Christos KK Loverdos
+ * Copyright 2011-2012 Christos KK Loverdos
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,12 +17,6 @@
 package com.ckkloverdos
 
 package object maybe {
-  @inline
-  final def ignoreExceptions(f: => Any): Unit = {
-    try f
-    catch { case _ => } finally {}
-  }
-  
   def effect[A](f: => A)(_catch: => Unit)(_finally: => Unit): Maybe[A] = {
     try {
       f match {
@@ -31,13 +25,32 @@ package object maybe {
       }
     } catch {
       case e: Throwable =>
-        ignoreExceptions (_catch)
+        safeUnit(_catch)
         Failed(e)
     } finally {
-      ignoreExceptions(_finally)
+      safeUnit(_finally)
     }
   }
 
   @inline
-  final def safe[A](f: => A): Maybe[A] = Maybe(f)
+  def safeUnit[A](f: => A): Unit = {
+    try f
+    catch { case _ ⇒}
+  }
+
+  final class RichMaybe[A](a: => A) {
+    def maybe: Maybe[A] = Maybe(a)
+  }
+
+  implicit def anyToRichMaybe[A](a: => A): RichMaybe[A] = new RichMaybe[A](a)
+
+  implicit def optionToMaybe[T](x: Option[T]): MaybeOption[T] = x match {
+    case Some(c) => Just(c)
+    case None    => NoVal
+  }
+  
+  implicit def eitherToMaybe[A <: Throwable, B](x: Either[A,  B]): MaybeEither[B] = x match {
+    case Left(left)   ⇒ Failed(left)
+    case Right(right) ⇒ Just(right)
+  } 
 }

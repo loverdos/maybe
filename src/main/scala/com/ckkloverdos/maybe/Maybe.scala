@@ -23,7 +23,6 @@ import collection.Iterator
  *
  * @author Christos KK Loverdos <loverdos@gmail.com>.
  */
-
 sealed abstract class Maybe[+A] {
   def toIterator: Iterator[A]
   def toTraversable: Traversable[A]
@@ -41,8 +40,21 @@ sealed abstract class Maybe[+A] {
   def map[B](f: A => B): Maybe[B]
 
   def flatMap[B](f: A => Maybe[B]): Maybe[B]
-  
+
+  /**
+   * Map or return the provided default value.
+   */
   def defMap[B](default: => B)(f: A => B): B = map(f) getOr default
+
+  /**
+   * Use this value of type `A` to provide another one of type `B` and then
+   * do some cleanup on the original value of type `A`.
+   *
+   * Use case: Get a DB cursor, perform calculations based on that and then close the cursor.
+   */
+  def finallyMap[B](_finally: A => Unit)(f: A => B): Maybe[B]
+  
+  def finallyFlatMap[B](_finally: A => Unit)(f: A => Maybe[B]): Maybe[B]
 
   @inline
   final def >>[B](f: A => Maybe[B]): Maybe[B] = this flatMap f
@@ -54,7 +66,7 @@ sealed abstract class Maybe[+A] {
   def fold[T](onJust: (A) => T)(onNoVal: => T)(onFailed: (Failed) => T): T
 
   @inline
-  final def fold_[T](onJust: => T)(onNoVal: => T)(onFailed: => T): T =
+  final def foldUnit(onJust: => Any)(onNoVal: => Any)(onFailed: => Any): Unit =
     fold(a => onJust)(onNoVal)(f => onFailed)
 
   @inline
@@ -76,7 +88,7 @@ sealed abstract class Maybe[+A] {
   def castTo[B: Manifest]: MaybeOption[B]
 
   /**
-   * Flattens successive maybes once.
+   * Flattens two successive maybes to one.
    */
   def flatten1[U](implicit ev: A <:< Maybe[U]): Maybe[U]
 }
@@ -110,15 +122,10 @@ object MaybeEither {
 }
 
 object Maybe {
-  val MaybeEmptyIterator   : Iterator   [Nothing] = Iterator   ()
-  val MaybeEmptyTraversable: Traversable[Nothing] = Traversable()
-  val MaybeEmptyList       : List       [Nothing] = List       ()
-  val MaybeEmptySet        : Set        [Nothing] = Set        ()
-
-  implicit def optionToMaybe[T](x: Option[T]) = x match {
-    case Some(c) => Just(c)
-    case None    => NoVal
-  }
+  private[maybe] final val MaybeEmptyIterator   : Iterator   [Nothing] = Iterator   ()
+  private[maybe] final val MaybeEmptyTraversable: Traversable[Nothing] = Traversable()
+  private[maybe] final val MaybeEmptyList       : List       [Nothing] = List       ()
+  private[maybe] final val MaybeEmptySet        : Set        [Nothing] = Set        ()
 
   /**
    * This is a polymorphic constructor for Maybes.
@@ -149,6 +156,17 @@ final case class Just[@specialized +A](get: A) extends MaybeOption[A] with Maybe
 
   def getOr[B >: A](b: => B) = get
 
+
+  def finallyMap[B](_finally: A => Unit)(f: A => B): Maybe[B] = {
+    try this.map(f)
+    finally { safeUnit(_finally(get)) }
+  }
+
+  def finallyFlatMap[B](_finally: A => Unit)(f: A => Maybe[B]): Maybe[B] = {
+    try this.flatMap(f)
+    finally { safeUnit(_finally(get)) }
+  }
+
   def fold[T](onJust: (A) => T)(onOnVal: => T)(onFailed: (Failed) => T) = onJust(get)
 
   def ||[B >: A](f: => Maybe[B]) = this
@@ -157,7 +175,7 @@ final case class Just[@specialized +A](get: A) extends MaybeOption[A] with Maybe
   def flatMap[B](f: (A) => Maybe[B]) = f(get)
   def filter(f: (A) => Boolean): Maybe[A] = if(f(get)) this else NoVal
   def foreach(f: A => Unit) = f(get)
-  
+
   def castTo[B: Manifest] = get match {
     case null  => NoVal // normally null should not even be here but we are being cautious
     case value => if(manifest[B].erasure.isInstance(value)) this.asInstanceOf[MaybeOption[B]] else NoVal
@@ -189,7 +207,11 @@ case object NoVal extends MaybeOption[Nothing] {
   def flatMap[B](f: (Nothing) => Maybe[B]) = NoVal
   def filter(f: (Nothing) => Boolean) = NoVal
   def foreach(f: Nothing => Unit) = {}
-  
+
+  def finallyMap[B](_finally: (Nothing) => Unit)(f: (Nothing) => B) = this
+
+  def finallyFlatMap[B](_finally: (Nothing) => Unit)(f: (Nothing) => Maybe[B]) = this
+
   def castTo[B: Manifest]: MaybeOption[B] = NoVal
 
   def flatten1[U](implicit ev: <:<[Nothing, Maybe[U]]) = this
@@ -223,11 +245,15 @@ final case class Failed(cause: Throwable) extends MaybeEither[Nothing] {
   def flatMap[B](f: (Nothing) => Maybe[B]) = this
   def filter(f: (Nothing) => Boolean) = this
   def foreach(f: Nothing => Unit) = {}
-  
+
+  def finallyMap[B](_finally: (Nothing) => Unit)(f: (Nothing) => B) = this
+
+  def finallyFlatMap[B](_finally: (Nothing) => Unit)(f: (Nothing) => Maybe[B]) = this
+
   def castTo[B: Manifest]: MaybeOption[B] = NoVal
 
   def flatten1[U](implicit ev: <:<[Nothing, Maybe[U]]) = this
-  
+
   def detailedMessage: String = {
     "[%s] %s".format(cause.getClass.getName, cause.getMessage)
   }
