@@ -94,32 +94,25 @@ class MaybeTest {
 
   @Test
   def testCastNullToNoVal: Unit = {
-    Assert.assertEquals(NoVal, Just(null).safeCastTo[Int])
-  }
-
-  @Test
-  def testSafeCastTo: Unit = {
-    val help = "Help"
-    val aJust: Maybe[_] = Just(help)
-    Assert.assertTrue(aJust.safeCastTo[CharSequence].isJust)
-  }
-
-  @Test
-  def testSafeCastTo2: Unit = {
-    val help = "Help"
-    val aJust: Maybe[_] = Just(help)
-    Assert.assertFalse(aJust.safeCastTo[Int].isJust)
+    Assert.assertEquals(NoVal, Just(null).castTo[String])
   }
 
   @Test
   def testCastTo: Unit = {
-    println("Just(1).castTo[Int] = %s".format(Just(1).castTo[Int]))
-    Assert.assertTrue(Just(1).castTo[Int].isJust)
+    val help = "Help"
+    val aJust: Maybe[_] = Just(help)
+    Assert.assertTrue(aJust.castTo[CharSequence].isJust)
   }
 
   @Test
   def testCastTo2: Unit = {
-    println("Just(1).castTo[String] = %s".format(Just(1).castTo[String]))
+    val help = "Help"
+    val aJust: Maybe[_] = Just(help)
+    Assert.assertTrue(aJust.castTo[ScalaObject].isFailed)
+  }
+
+  @Test
+  def testCastTo3: Unit = {
     Assert.assertTrue(Just(1).castTo[String].isFailed)
   }
 

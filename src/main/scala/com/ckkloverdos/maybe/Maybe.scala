@@ -105,9 +105,7 @@ sealed abstract class Maybe[+A] {
   final def forFailed[B >: A](f: Failed ⇒ Maybe[B]): Maybe[B] =
     if(isFailed) f(this.asInstanceOf[Failed]) else this
 
-  def safeCastTo[B: Manifest]: MaybeOption[B]
-  
-  def castTo[B: Manifest]: Maybe[B]
+  def castTo[B <: AnyRef : Manifest]: Maybe[B]
 
   /**
    * Flattens two successive maybes to one.
@@ -198,15 +196,10 @@ final case class Just[+A](get: A) extends MaybeOption[A] with MaybeEither[A] {
   def filter(f: (A) ⇒ Boolean): Maybe[A] = if(f(get)) this else NoVal
   def foreach(f: A ⇒ Unit) = f(get)
 
-  def safeCastTo[B: Manifest] = get match {
-    case null  ⇒ NoVal // normally null should not even be here but we are being cautious
-    case value ⇒ if(manifest[B].erasure.isInstance(value)) this.asInstanceOf[MaybeOption[B]] else NoVal
-  }
-
-  def castTo[B: Manifest] = get match {
+  def castTo[B <: AnyRef : Manifest] = get match {
     case null ⇒ NoVal
     case value if(manifest[B].erasure.isInstance(value)) ⇒ this.asInstanceOf[Maybe[B]]
-    case value ⇒ Failed(new ClassCastException("%s -> %s".format(get.asInstanceOf[AnyRef].getClass.getName, manifest[B])))
+    case value ⇒ Failed(new ClassCastException("%s -> %s".format(get.getClass.getName, manifest[B].erasure.getName)))
   }
 
   def flatten1[U](implicit ev: A <:< Maybe[U]): Maybe[U] = ev(get)
@@ -240,9 +233,7 @@ case object NoVal extends MaybeOption[Nothing] {
 
   def finallyFlatMap[B](_finally: (Nothing) ⇒ Unit)(f: (Nothing) ⇒ Maybe[B]) = this
 
-  def safeCastTo[B: Manifest]: MaybeOption[B] = this
-
-  def castTo[B: Manifest] = this
+  def castTo[B <: AnyRef : Manifest] = this
 
   def flatten1[U](implicit ev: <:<[Nothing, Maybe[U]]) = this
 
@@ -280,9 +271,7 @@ final case class Failed(cause: Throwable) extends MaybeEither[Nothing] {
 
   def finallyFlatMap[B](_finally: (Nothing) ⇒ Unit)(f: (Nothing) ⇒ Maybe[B]) = this
 
-  def safeCastTo[B: Manifest]: MaybeOption[B] = NoVal
-
-  def castTo[B: Manifest] = this
+  def castTo[B <: AnyRef : Manifest] = this
 
   def flatten1[U](implicit ev: <:<[Nothing, Maybe[U]]) = this
 
