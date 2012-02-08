@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2011 Christos KK Loverdos
+ * Copyright 2011-2012 Christos KK Loverdos
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ package com.ckkloverdos.maybe
 
 import org.junit.Assert
 import org.junit.Test
-import java.io.File
 
 /**
  * 
@@ -95,34 +94,47 @@ class MaybeTest {
 
   @Test
   def testCastNullToNoVal: Unit = {
-    Assert.assertEquals(NoVal, Just(null).castTo[Int])
+    Assert.assertEquals(NoVal, Just(null).safeCastTo[Int])
+  }
+
+  @Test
+  def testSafeCastTo: Unit = {
+    val help = "Help"
+    val aJust: Maybe[_] = Just(help)
+    Assert.assertTrue(aJust.safeCastTo[CharSequence].isJust)
+  }
+
+  @Test
+  def testSafeCastTo2: Unit = {
+    val help = "Help"
+    val aJust: Maybe[_] = Just(help)
+    Assert.assertFalse(aJust.safeCastTo[Int].isJust)
   }
 
   @Test
   def testCastTo: Unit = {
-    val help = "Help"
-    val aJust: Maybe[_] = Just(help)
-    Assert.assertTrue(aJust.castTo[CharSequence].isJust)
+    println("Just(1).castTo[Int] = %s".format(Just(1).castTo[Int]))
+    Assert.assertTrue(Just(1).castTo[Int].isJust)
   }
 
   @Test
   def testCastTo2: Unit = {
-    val help = "Help"
-    val aJust: Maybe[_] = Just(help)
-    Assert.assertFalse(aJust.castTo[Int].isJust)
+    println("Just(1).castTo[String] = %s".format(Just(1).castTo[String]))
+    Assert.assertTrue(Just(1).castTo[String].isFailed)
   }
 
   @Test
   def testFinallyMap: Unit = {
-    var _flag = false
+    var _flag1 = false
+    var _flag2 = false
     class TesterCursor {
-      var closed = false
 
-      def doit() = 1
+      def doit() = {
+        _flag1 = true
+      }
 
       def close() = {
-        closed = true
-        _flag = true
+        _flag2 = true
       }
     }
 
@@ -130,7 +142,9 @@ class MaybeTest {
       def newCursor = new TesterCursor
     }
 
-    val tester = new Tester
-    tester.maybe.map(_.newCursor).finallyMap(_.close())(_.doit())
+    Maybe(new Tester).map(_.newCursor).finallyMap(_.close())(_.doit())
+    
+    Assert.assertEquals(true, _flag1)
+    Assert.assertEquals(true, _flag2)
   }
 }

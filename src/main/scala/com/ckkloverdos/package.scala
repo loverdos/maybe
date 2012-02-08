@@ -38,12 +38,6 @@ package object maybe {
     catch { case _ ⇒}
   }
 
-  final class RichMaybe[A](a: => A) {
-    def maybe: Maybe[A] = Maybe(a)
-  }
-
-  implicit def anyToRichMaybe[A](a: => A): RichMaybe[A] = new RichMaybe[A](a)
-
   implicit def optionToMaybe[T](x: Option[T]): MaybeOption[T] = x match {
     case Some(c) => Just(c)
     case None    => NoVal
