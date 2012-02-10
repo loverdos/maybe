@@ -17,13 +17,14 @@
 package com.ckkloverdos.maybe
 
 import collection.Iterator
+import java.util.Arrays
 
 /**
- * Inspired by Lift's Box, Haskell's Maybe and Scala's Option.
+ * Inspired by Lift's `Box`, Haskell's `Maybe` and Scala's `Option`.
  *
- * @author Christos KK Loverdos <loverdos@gmail.com>.
+ * @author Christos KK Loverdos <loverdos@gmail.com>
  */
-sealed abstract class Maybe[+A] {
+sealed abstract class Maybe[+A] extends Serializable {
   def toIterator: Iterator[A]
   def toTraversable: Traversable[A]
   def toOption: Option[A]
@@ -41,10 +42,23 @@ sealed abstract class Maybe[+A] {
 
   def flatMap[B](f: A ⇒ Maybe[B]): Maybe[B]
 
+  @inline
+  final def mapJust[B >: A](f: Just[A] ⇒ Maybe[B]): Maybe[B] =
+    if(isJust) f(this.asInstanceOf[Just[A]]) else this
+
+  @inline
+  final def mapNoVal[B >: A](f: ⇒ Maybe[B]): Maybe[B] =
+    if(isNoVal) f else this
+
+  @inline
+  final def mapFailed[B >: A](f: Failed ⇒ Maybe[B]): Maybe[B] =
+    if(isFailed) f(this.asInstanceOf[Failed]) else this
+
   /**
    * Map or return the provided default value.
    */
-  def defMap[B](default: ⇒ B)(f: A ⇒ B): B = map(f) getOr default
+  @inline
+  def defaultMap[B](default: ⇒ B)(f: A ⇒ B): B = map(f) getOr default
 
   /**
    * Use this value of type `A` to provide another one of type `B` and then
@@ -65,26 +79,6 @@ sealed abstract class Maybe[+A] {
 
   def fold[T](onJust: (A) ⇒ T)(onNoVal: ⇒ T)(onFailed: (Failed) ⇒ T): T
 
-//  @inline
-//  final def foldOption[B](onJust: (A) ⇒ B)(onNoVal: ⇒ B): Maybe[B] = this match {
-//    case Just(a) ⇒
-//      this.map(onJust)
-//    case NoVal ⇒
-//      Maybe(onNoVal)
-//    case failed @ Failed(_) ⇒
-//      failed
-//  }
-//
-//  @inline
-//  def foldEither[B](onJust: (A) ⇒ B)(onFailed: ⇒ (Failed) => B): Maybe[B] = this match {
-//    case Just(a) ⇒
-//      this.map(onJust)
-//    case NoVal ⇒
-//      NoVal
-//    case failed @ Failed(_) ⇒
-//      Maybe(onFailed(failed))
-//  }
-  
   @inline
   final def foldUnit(onJust: ⇒ Any)(onNoVal: ⇒ Any)(onFailed: ⇒ Any): Unit =
     fold(a ⇒ onJust)(onNoVal)(f ⇒ onFailed)
@@ -92,18 +86,6 @@ sealed abstract class Maybe[+A] {
   @inline
   final def foldJust[T](onJust: (A) ⇒ T)(onOther: ⇒ T): T =
     fold(onJust)(onOther)(f ⇒ onOther)
-
-  @inline
-  final def forJust[B >: A](f: Just[A] ⇒ Maybe[B]): Maybe[B] =
-    if(isJust) f(this.asInstanceOf[Just[A]]) else this
-
-  @inline
-  final def forNoVal[B >: A](f: ⇒ Maybe[B]): Maybe[B] =
-    if(isNoVal) f else this
-
-  @inline
-  final def forFailed[B >: A](f: Failed ⇒ Maybe[B]): Maybe[B] =
-    if(isFailed) f(this.asInstanceOf[Failed]) else this
 
   def castTo[B <: AnyRef : Manifest]: Maybe[B]
 
@@ -134,10 +116,10 @@ object MaybeEither {
   def apply[A](x: ⇒ A): MaybeEither[A] = Maybe(x) match {
     case j@Just(_) ⇒
       j
-    case f@Failed(_) ⇒
+    case f@Failed(_, _, _) ⇒
       f
     case NoVal ⇒
-      Failed(new Exception("Got NoVal for a MaybeFailed"))
+      Failed.from(new Exception("Got NoVal for a MaybeFailed"))
   }
 }
 
@@ -159,7 +141,7 @@ object Maybe {
         case _    ⇒ Just(value)
       }
     } catch {
-      case e: Throwable ⇒ Failed(e)
+      case e: Throwable ⇒ Failed.from(e)
     }
   }
 }
@@ -199,7 +181,7 @@ final case class Just[+A](get: A) extends MaybeOption[A] with MaybeEither[A] {
   def castTo[B <: AnyRef : Manifest] = get match {
     case null ⇒ NoVal
     case value if(manifest[B].erasure.isInstance(value)) ⇒ this.asInstanceOf[Maybe[B]]
-    case value ⇒ Failed(new ClassCastException("%s -> %s".format(get.getClass.getName, manifest[B].erasure.getName)))
+    case value ⇒ Failed.from(new ClassCastException("%s -> %s".format(get.getClass.getName, manifest[B].erasure.getName)))
   }
 
   def flatten1[U](implicit ev: A <:< Maybe[U]): Maybe[U] = ev(get)
@@ -243,8 +225,12 @@ case object NoVal extends MaybeOption[Nothing] {
 /**
  * A Maybe wrapper for an exception.
  */
-final case class Failed(cause: Throwable) extends MaybeEither[Nothing] {
-  require(cause ne null, "cause is null")
+final case class Failed(failureType: String,
+                        message: String = "",
+                        stackTrace: Array[StackTraceElement] = Array()) extends MaybeEither[Nothing] {
+  require(failureType ne null, "failureType is null")
+  require(message ne null, "message is null")
+  require(stackTrace ne null, "stackTrace is null")
 
   def isJust   = false
   def isNoVal  = false
@@ -275,10 +261,30 @@ final case class Failed(cause: Throwable) extends MaybeEither[Nothing] {
 
   def flatten1[U](implicit ev: <:<[Nothing, Maybe[U]]) = this
 
-  def detailedMessage: String = {
-    "[%s] %s".format(cause.getClass.getName, cause.getMessage)
+  override def equals(that: Any) = {
+    that match {
+      case failed: Failed ⇒
+        this.failureType      == failed.failureType &&
+        this.message    == failed.message &&
+        Arrays.equals(this.stackTrace.asInstanceOf[Array[AnyRef]], failed.stackTrace.asInstanceOf[Array[AnyRef]])
+      case _ ⇒
+        false
+    }
   }
+}
 
-  override def equals(that: Any) =
-    that.isInstanceOf[Failed] && that.asInstanceOf[Failed].cause   == this.cause
+object Failed {
+  def from(t: Throwable): Failed = {
+    require(t ne null, "<null> throwable")
+
+    val msg = t.getMessage match {
+      case null ⇒ ""
+      case that ⇒ that
+    }
+    val trace = t.getStackTrace match {
+      case null ⇒ Array[StackTraceElement]()
+      case that ⇒ that
+    }
+    new Failed(t.getClass.getName, msg, trace)
+  }
 }

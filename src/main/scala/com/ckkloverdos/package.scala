@@ -26,7 +26,7 @@ package object maybe {
     } catch {
       case e: Throwable =>
         safeUnit(_catch)
-        Failed(e)
+        Failed.from(e)
     } finally {
       safeUnit(_finally)
     }
@@ -44,7 +44,19 @@ package object maybe {
   }
   
   implicit def eitherToMaybe[A <: Throwable, B](x: Either[A,  B]): MaybeEither[B] = x match {
-    case Left(left)   ⇒ Failed(left)
+    case Left(left)   ⇒ Failed.from(left)
     case Right(right) ⇒ Just(right)
-  } 
+  }
+  
+  def sameThrowables(a: Throwable, b: Throwable): Boolean = {
+    (a, b) match {
+      case (null, null) ⇒ true
+      case (null, _)    ⇒ false
+      case (_, null)    ⇒ false
+      case (a, b) ⇒
+        (a.getClass eq b.getClass) &&
+        sameThrowables(a.getCause, b.getCause) &&
+        a.getMessage == b.getMessage
+    }
+  }
 }

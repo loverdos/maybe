@@ -18,6 +18,7 @@ package com.ckkloverdos.maybe
 
 import org.junit.Assert
 import org.junit.Test
+import java.io.{ByteArrayInputStream, ObjectInputStream, ByteArrayOutputStream, ObjectOutputStream}
 
 /**
  * 
@@ -61,8 +62,10 @@ class MaybeTest {
   @Test
   def testMatchFailed: Unit = {
     val Except = new Exception("Hello")
-    Failed(Except) match {
-      case Failed(Except) => ()
+    val exClassName = Except.getClass.getName
+    val exTrace = Except.getStackTrace
+    Failed.from(Except) match {
+      case Failed(exClassName, "Hello", exTrace) => ()
       case _ => Assert.assertFalse(true)
     }
   }
@@ -139,5 +142,34 @@ class MaybeTest {
     
     Assert.assertEquals(true, _flag1)
     Assert.assertEquals(true, _flag2)
+  }
+
+  private def serializeAndRead[A <: AnyRef](inObj: A): A = {
+    val bytesOut = new ByteArrayOutputStream()
+    val outStream = new ObjectOutputStream(bytesOut)
+    outStream.writeObject(inObj)
+    outStream.close()
+    val bytesIn = new ByteArrayInputStream(bytesOut.toByteArray)
+    val inStream = new ObjectInputStream(bytesIn)
+    val outObj = inStream.readObject()
+    inStream.close()
+    outObj.asInstanceOf[A]
+  }
+
+  @Test
+  def testSerializeJust: Unit = {
+    Assert.assertEquals(Just(5), serializeAndRead(Just(5)))
+  }
+
+  @Test
+  def testSerializeNoVal: Unit = {
+    Assert.assertTrue(NoVal eq serializeAndRead(NoVal))
+  }
+
+  @Test
+  def testSerializeFailed: Unit = {
+    val failedIn = Maybe { throw new Exception("Really!!") }
+    val failedOut = serializeAndRead(failedIn)
+    Assert.assertEquals(failedIn, failedOut)
   }
 }
