@@ -22,3 +22,5 @@ README.pdf
 build.sbt_
 project/build.scala_
 _project/
+release
+deploy
