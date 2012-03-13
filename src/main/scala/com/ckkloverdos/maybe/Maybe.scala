@@ -17,7 +17,6 @@
 package com.ckkloverdos.maybe
 
 import collection.Iterator
-import java.util.Arrays
 
 /**
  * Inspired by Lift's `Box`, Haskell's `Maybe` and Scala's `Option`.
@@ -116,10 +115,10 @@ object MaybeEither {
   def apply[A](x: ⇒ A): MaybeEither[A] = Maybe(x) match {
     case j@Just(_) ⇒
       j
-    case f@Failed(_, _, _) ⇒
+    case f@Failed(_) ⇒
       f
     case NoVal ⇒
-      Failed.from(new Exception("Got NoVal for a MaybeFailed"))
+      Failed(new Exception("Got NoVal for a MaybeFailed"))
   }
 }
 
@@ -141,7 +140,7 @@ object Maybe {
         case _    ⇒ Just(value)
       }
     } catch {
-      case e: Throwable ⇒ Failed.from(e)
+      case e: Throwable ⇒ Failed(e)
     }
   }
 }
@@ -174,14 +173,28 @@ final case class Just[+A](get: A) extends MaybeOption[A] with MaybeEither[A] {
   def ||[B >: A](f: ⇒ Maybe[B]) = this
 
   def map[B](f: (A) ⇒ B)= Maybe(f(get))
-  def flatMap[B](f: (A) ⇒ Maybe[B]) = f(get)
-  def filter(f: (A) ⇒ Boolean): Maybe[A] = if(f(get)) this else NoVal
+  def flatMap[B](f: (A) ⇒ Maybe[B]) = {
+    try f(get)
+    catch {
+      case t: Throwable ⇒ Failed(t)
+    }
+  }
+  def filter(f: (A) ⇒ Boolean): Maybe[A] = {
+    try {
+      if(f(get)) this else NoVal
+    } catch {
+      case t: Throwable ⇒ Failed(t)
+    }
+  }
   def foreach(f: A ⇒ Unit) = f(get)
 
   def castTo[B <: AnyRef : Manifest] = get match {
     case null ⇒ NoVal
     case value if(manifest[B].erasure.isInstance(value)) ⇒ this.asInstanceOf[Maybe[B]]
-    case value ⇒ Failed.from(new ClassCastException("%s -> %s".format(get.getClass.getName, manifest[B].erasure.getName)))
+    case value ⇒ Failed(
+      new ClassCastException("%s -> %s".format(
+        get.asInstanceOf[AnyRef].getClass.getName,
+        manifest[B].erasure.getName)))
   }
 
   def flatten1[U](implicit ev: A <:< Maybe[U]): Maybe[U] = ev(get)
@@ -225,12 +238,8 @@ case object NoVal extends MaybeOption[Nothing] {
 /**
  * A Maybe wrapper for an exception.
  */
-final case class Failed(failureType: String,
-                        message: String = "",
-                        stackTrace: Array[StackTraceElement] = Array()) extends MaybeEither[Nothing] {
-  require(failureType ne null, "failureType is null")
-  require(message ne null, "message is null")
-  require(stackTrace ne null, "stackTrace is null")
+final case class Failed(exception: Throwable) extends MaybeEither[Nothing] {
+  require(exception ne null, "exception is null")
 
   def isJust   = false
   def isNoVal  = false
@@ -264,27 +273,9 @@ final case class Failed(failureType: String,
   override def equals(that: Any) = {
     that match {
       case failed: Failed ⇒
-        this.failureType      == failed.failureType &&
-        this.message    == failed.message &&
-        Arrays.equals(this.stackTrace.asInstanceOf[Array[AnyRef]], failed.stackTrace.asInstanceOf[Array[AnyRef]])
+        this.exception  == failed.exception
       case _ ⇒
         false
     }
-  }
-}
-
-object Failed {
-  def from(t: Throwable): Failed = {
-    require(t ne null, "<null> throwable")
-
-    val msg = t.getMessage match {
-      case null ⇒ ""
-      case that ⇒ that
-    }
-    val trace = t.getStackTrace match {
-      case null ⇒ Array[StackTraceElement]()
-      case that ⇒ that
-    }
-    new Failed(t.getClass.getName, msg, trace)
   }
 }
