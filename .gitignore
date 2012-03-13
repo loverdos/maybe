@@ -21,3 +21,4 @@ README.pdf
 .project
 build.sbt_
 project/build.scala_
+_project/
