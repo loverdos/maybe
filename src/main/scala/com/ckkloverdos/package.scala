@@ -26,7 +26,7 @@ package object maybe {
     } catch {
       case e: Throwable =>
         safeUnit(_catch)
-        Failed.from(e)
+        Failed(e)
     } finally {
       safeUnit(_finally)
     }
@@ -44,7 +44,7 @@ package object maybe {
   }
   
   implicit def eitherToMaybe[A <: Throwable, B](x: Either[A,  B]): MaybeEither[B] = x match {
-    case Left(left)   ⇒ Failed.from(left)
+    case Left(left)   ⇒ Failed(left)
     case Right(right) ⇒ Just(right)
   }
   
@@ -58,5 +58,23 @@ package object maybe {
         sameThrowables(a.getCause, b.getCause) &&
         a.getMessage == b.getMessage
     }
+  }
+
+  def getFromMapAsMaybe[A, B <: AnyRef](map: scala.collection.Map[A, B], key: A): Maybe[B] = Maybe {
+   map.get(key) match {
+     case Some(value) ⇒
+       value
+     case None ⇒
+       null.asInstanceOf[B]
+   }
+  }
+
+  def getFromMapAsMaybeOption[A, B <: AnyRef](map: scala.collection.Map[A, B], key: A): MaybeOption[B] = MaybeOption {
+   map.get(key) match {
+     case Some(value) ⇒
+       value
+     case None ⇒
+       null.asInstanceOf[B]
+   }
   }
 }
