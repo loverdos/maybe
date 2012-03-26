@@ -17,6 +17,7 @@
 package com.ckkloverdos.maybe
 
 import collection.Iterator
+import com.ckkloverdos.manifest.ManifestHelpers
 
 /**
  * Inspired by Lift's `Box`, Haskell's `Maybe` and Scala's `Option`.
@@ -86,7 +87,7 @@ sealed abstract class Maybe[+A] extends Serializable {
   final def foldJust[T](onJust: (A) ⇒ T)(onOther: ⇒ T): T =
     fold(onJust)(onOther)(f ⇒ onOther)
 
-  def castTo[B <: AnyRef : Manifest]: Maybe[B]
+  def castTo[B : Manifest]: Maybe[B]
 
   /**
    * Flattens two successive maybes to one.
@@ -188,13 +189,19 @@ final case class Just[+A](get: A) extends MaybeOption[A] with MaybeEither[A] {
   }
   def foreach(f: A ⇒ Unit) = f(get)
 
-  def castTo[B <: AnyRef : Manifest] = get match {
-    case null ⇒ NoVal
-    case value if(manifest[B].erasure.isInstance(value)) ⇒ this.asInstanceOf[Maybe[B]]
-    case value ⇒ Failed(
-      new ClassCastException("%s -> %s".format(
-        get.asInstanceOf[AnyRef].getClass.getName,
-        manifest[B].erasure.getName)))
+  def castTo[B : Manifest] = get match {
+    case null ⇒
+      NoVal
+    case value ⇒ //if(manifest[B].erasure.isInstance(value)) ⇒ this.asInstanceOf[Maybe[B]]
+      val ma = ManifestHelpers.manifestOfAny(get)
+      val mb = manifest[B]
+      if(mb == ma || mb.erasure.isInstance(get))
+        this.asInstanceOf[Maybe[B]]
+      else
+        Failed(
+          new ClassCastException("%s -> %s".format(
+            get.asInstanceOf[AnyRef].getClass.getName,
+            manifest[B].erasure.getName)))
   }
 
   def flatten1[U](implicit ev: A <:< Maybe[U]): Maybe[U] = ev(get)
@@ -228,7 +235,7 @@ case object NoVal extends MaybeOption[Nothing] {
 
   def finallyFlatMap[B](_finally: (Nothing) ⇒ Unit)(f: (Nothing) ⇒ Maybe[B]) = this
 
-  def castTo[B <: AnyRef : Manifest] = this
+  def castTo[B : Manifest] = this
 
   def flatten1[U](implicit ev: <:<[Nothing, Maybe[U]]) = this
 
@@ -266,7 +273,7 @@ final case class Failed(exception: Throwable) extends MaybeEither[Nothing] {
 
   def finallyFlatMap[B](_finally: (Nothing) ⇒ Unit)(f: (Nothing) ⇒ Maybe[B]) = this
 
-  def castTo[B <: AnyRef : Manifest] = this
+  def castTo[B : Manifest] = this
 
   def flatten1[U](implicit ev: <:<[Nothing, Maybe[U]]) = this
 

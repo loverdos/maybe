@@ -99,22 +99,28 @@ class MaybeTest {
   }
 
   @Test
-  def testCastTo: Unit = {
+  def testCastToCharSequenceSuccess: Unit = {
     val help = "Help"
     val aJust: Maybe[_] = Just(help)
     Assert.assertTrue(aJust.castTo[CharSequence].isJust)
   }
 
   @Test
-  def testCastTo2: Unit = {
+  def testCastToScalaObjectFailure: Unit = {
     val help = "Help"
     val aJust: Maybe[_] = Just(help)
     Assert.assertTrue(aJust.castTo[ScalaObject].isFailed)
   }
 
   @Test
-  def testCastTo3: Unit = {
+  def testCastToIntFailure: Unit = {
     Assert.assertTrue(Just(1).castTo[String].isFailed)
+  }
+
+  @Test
+  def testCastToIntSuccess: Unit = {
+    val cast = Maybe(1).castTo[Int]
+    Assert.assertTrue(cast.isJust)
   }
 
   @Test
