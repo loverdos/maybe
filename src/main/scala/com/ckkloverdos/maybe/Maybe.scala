@@ -16,8 +16,8 @@
 
 package com.ckkloverdos.maybe
 
-import collection.Iterator
 import com.ckkloverdos.manifest.ManifestHelpers
+import collection.{Iterator}
 
 /**
  * Inspired by Lift's `Box`, Haskell's `Maybe` and Scala's `Option`.
@@ -29,6 +29,7 @@ sealed abstract class Maybe[+A] extends Serializable {
   def toTraversable: Traversable[A]
   def toOption: Option[A]
   def toList: List[A]
+  def toStream: Stream[A]
 
   def isJust: Boolean
   def isNoVal: Boolean
@@ -47,12 +48,30 @@ sealed abstract class Maybe[+A] extends Serializable {
     if(isJust) f(this.asInstanceOf[Just[A]]) else this
 
   @inline
+  final def forJust[U](f: Just[A] ⇒ U): this.type = {
+    if(isJust) f(this.asInstanceOf[Just[A]])
+    this
+  }
+
+  @inline
   final def mapNoVal[B >: A](f: ⇒ Maybe[B]): Maybe[B] =
     if(isNoVal) f else this
 
   @inline
+  final def forNoVal[U](f: ⇒ U): this.type = {
+    if(isNoVal) f
+    this
+  }
+
+  @inline
   final def mapFailed[B >: A](f: Failed ⇒ Maybe[B]): Maybe[B] =
     if(isFailed) f(this.asInstanceOf[Failed]) else this
+
+  @inline
+  final def forFailed[U](f: Failed ⇒ U): this.type = {
+    if(isFailed) f(this.asInstanceOf[Failed])
+    this
+  }
 
   /**
    * Map or return the provided default value.
@@ -75,13 +94,13 @@ sealed abstract class Maybe[+A] extends Serializable {
 
   def filter(f: A ⇒ Boolean): Maybe[A]
 
-  def foreach(f: A ⇒ Unit): Unit
+  def foreach[U](f: A ⇒ U): Unit
 
   def fold[T](onJust: (A) ⇒ T)(onNoVal: ⇒ T)(onFailed: (Failed) ⇒ T): T
 
   @inline
   final def foldUnit(onJust: ⇒ Any)(onNoVal: ⇒ Any)(onFailed: ⇒ Any): Unit =
-    fold(a ⇒ onJust)(onNoVal)(f ⇒ onFailed)
+    fold((a: A) ⇒ onJust)(onNoVal)(f ⇒ onFailed)
 
   @inline
   final def foldJust[T](onJust: (A) ⇒ T)(onOther: ⇒ T): T =
@@ -93,6 +112,15 @@ sealed abstract class Maybe[+A] extends Serializable {
    * Flattens two successive maybes to one.
    */
   def flatten1[U](implicit ev: A <:< Maybe[U]): Maybe[U]
+
+  /**
+   * If this is a [[com.ckkloverdos.maybe.Failed]], throw its exception. Otherwise throw an irrelevant exception.
+   *
+   * This is syntactic sugar for the cases we already know this is a [[com.ckkloverdos.maybe.Failed]].
+   *
+   * @return `Nothing`
+   */
+  def throwMe: Nothing
 }
 
 /**
@@ -151,6 +179,7 @@ final case class Just[+A](get: A) extends MaybeOption[A] with MaybeEither[A] {
   def toTraversable = Traversable(get)
   def toOption      = Some(get)
   def toList        = List(get)
+  def toStream      = Stream.cons(get, Stream.Empty)
 
   def isJust = true
   def isFailed = false
@@ -187,7 +216,7 @@ final case class Just[+A](get: A) extends MaybeOption[A] with MaybeEither[A] {
       case t: Throwable ⇒ Failed(t)
     }
   }
-  def foreach(f: A ⇒ Unit) = f(get)
+  def foreach[U](f: A ⇒ U) = f(get)
 
   def castTo[B : Manifest] = get match {
     case null ⇒
@@ -206,6 +235,8 @@ final case class Just[+A](get: A) extends MaybeOption[A] with MaybeEither[A] {
 
   def flatten1[U](implicit ev: A <:< Maybe[U]): Maybe[U] = ev(get)
 
+  def throwMe = throw new Exception(toString)
+
   override def equals(that: Any) =
     that.isInstanceOf[Just[_]] && that.asInstanceOf[Just[_]].get == this.get
 }
@@ -215,6 +246,7 @@ case object NoVal extends MaybeOption[Nothing] {
   def toTraversable = Maybe.MaybeEmptyTraversable
   def toOption      = None
   def toList        = Maybe.MaybeEmptyList
+  def toStream      = Stream.Empty
 
   def isJust   = false
   def isNoVal  = true
@@ -229,7 +261,7 @@ case object NoVal extends MaybeOption[Nothing] {
   def map[B](f: (Nothing) ⇒ B)= NoVal
   def flatMap[B](f: (Nothing) ⇒ Maybe[B]) = NoVal
   def filter(f: (Nothing) ⇒ Boolean) = NoVal
-  def foreach(f: Nothing ⇒ Unit) = {}
+  def foreach[U](f: Nothing ⇒ U) = {}
 
   def finallyMap[B](_finally: (Nothing) ⇒ Unit)(f: (Nothing) ⇒ B) = this
 
@@ -238,6 +270,8 @@ case object NoVal extends MaybeOption[Nothing] {
   def castTo[B : Manifest] = this
 
   def flatten1[U](implicit ev: <:<[Nothing, Maybe[U]]) = this
+
+  def throwMe = throw new Exception(toString)
 
   override def equals(that: Any) = that.asInstanceOf[AnyRef] eq NoVal
 }
@@ -256,7 +290,7 @@ final case class Failed(exception: Throwable) extends MaybeEither[Nothing] {
   def toTraversable = Maybe.MaybeEmptyTraversable
   def toOption      = None
   def toList        = Maybe.MaybeEmptyList
-  def toSet         = Maybe.MaybeEmptySet
+  def toStream      = Stream.Empty
 
   def getOr[B >: Nothing](b: ⇒ B) = b
 
@@ -267,7 +301,7 @@ final case class Failed(exception: Throwable) extends MaybeEither[Nothing] {
   def map[B](f: (Nothing) ⇒ B) = this
   def flatMap[B](f: (Nothing) ⇒ Maybe[B]) = this
   def filter(f: (Nothing) ⇒ Boolean) = this
-  def foreach(f: Nothing ⇒ Unit) = {}
+  def foreach[U](f: Nothing ⇒ U) = {}
 
   def finallyMap[B](_finally: (Nothing) ⇒ Unit)(f: (Nothing) ⇒ B) = this
 
@@ -276,6 +310,8 @@ final case class Failed(exception: Throwable) extends MaybeEither[Nothing] {
   def castTo[B : Manifest] = this
 
   def flatten1[U](implicit ev: <:<[Nothing, Maybe[U]]) = this
+
+  def throwMe = throw exception
 
   override def equals(that: Any) = {
     that match {
