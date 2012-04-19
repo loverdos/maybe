@@ -138,7 +138,9 @@ object MaybeOption {
 /**
  * A Maybe that can be either a Just or a Failed. So, this is like Scala's Either.
  */
-sealed trait MaybeEither[+A] extends Maybe[A]
+sealed trait MaybeEither[+A] extends Maybe[A] {
+  def toEither: Either[Throwable, A]
+}
 
 object MaybeEither {
   def apply[A](x: ⇒ A): MaybeEither[A] = Maybe(x) match {
@@ -180,6 +182,8 @@ final case class Just[+A](get: A) extends MaybeOption[A] with MaybeEither[A] {
   def toOption      = Some(get)
   def toList        = List(get)
   def toStream      = Stream.cons(get, Stream.Empty)
+
+  def toEither: Either[Throwable, A] = Right(get)
 
   def isJust = true
   def isFailed = false
@@ -291,6 +295,8 @@ final case class Failed(exception: Throwable) extends MaybeEither[Nothing] {
   def toOption      = None
   def toList        = Maybe.MaybeEmptyList
   def toStream      = Stream.Empty
+
+  def toEither: Either[Throwable, Nothing] = Left(exception)
 
   def getOr[B >: Nothing](b: ⇒ B) = b
 
