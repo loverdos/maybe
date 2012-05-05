@@ -33,21 +33,24 @@ package object maybe {
   }
 
   @inline
-  def safeUnit[A](f: => A): Unit = {
+  def maybe[A](f: ⇒ A) = Maybe(f)
+
+  @inline
+  def safeUnit[A](f: ⇒ A): Unit = {
     try f
     catch { case _ ⇒}
   }
 
   implicit def optionToMaybe[T](x: Option[T]): MaybeOption[T] = x match {
-    case Some(c) => Just(c)
-    case None    => NoVal
+    case Some(c) ⇒ Just(c)
+    case None    ⇒ NoVal
   }
   
   implicit def eitherToMaybe[A <: Throwable, B](x: Either[A,  B]): MaybeEither[B] = x match {
     case Left(left)   ⇒ Failed(left)
     case Right(right) ⇒ Just(right)
   }
-  
+
   def sameThrowables(a: Throwable, b: Throwable): Boolean = {
     (a, b) match {
       case (null, null) ⇒ true
