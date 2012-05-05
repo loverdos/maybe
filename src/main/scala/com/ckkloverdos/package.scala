@@ -17,14 +17,14 @@
 package com.ckkloverdos
 
 package object maybe {
-  def effect[A](f: => A)(_catch: => Unit)(_finally: => Unit): Maybe[A] = {
+  def effect[A](f: ⇒ A)(_catch: ⇒ Unit)(_finally: ⇒ Unit): Maybe[A] = {
     try {
       f match {
-        case null => NoVal
-        case a    => Just(a)
+        case null ⇒ NoVal
+        case a    ⇒ Just(a)
       }
     } catch {
-      case e: Throwable =>
+      case e: Throwable ⇒
         safeUnit(_catch)
         Failed(e)
     } finally {
@@ -55,6 +55,7 @@ package object maybe {
    map.get(key) match {
      case Some(value) ⇒
        value
+
      case None ⇒
        null.asInstanceOf[B]
    }
@@ -64,6 +65,7 @@ package object maybe {
    map.get(key) match {
      case Some(value) ⇒
        value
+
      case None ⇒
        null.asInstanceOf[B]
    }
