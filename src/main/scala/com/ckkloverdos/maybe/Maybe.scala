@@ -16,8 +16,7 @@
 
 package com.ckkloverdos.maybe
 
-import com.ckkloverdos.manifest.ManifestHelpers
-import collection.{Iterator}
+import collection.Iterator
 
 /**
  * Inspired by Lift's `Box`, Haskell's `Maybe` and Scala's `Option`.
@@ -81,8 +80,6 @@ sealed abstract class Maybe[+A] extends Serializable {
   @inline
   final def foldJust[T](onJust: (A) ⇒ T)(onOther: ⇒ T): T =
     fold(onJust)(onOther)(f ⇒ onOther)
-
-  def castTo[B : Manifest]: Maybe[B]
 
   /**
    * Flattens two successive maybes to one.
@@ -206,21 +203,6 @@ final case class Just[+A](get: A) extends MaybeOption[A] with MaybeEither[A] {
   }
   def foreach[U](f: A ⇒ U) = f(get)
 
-  def castTo[B : Manifest] = get match {
-    case null ⇒
-      NoVal
-    case value ⇒ //if(manifest[B].erasure.isInstance(value)) ⇒ this.asInstanceOf[Maybe[B]]
-      val ma = ManifestHelpers.manifestOfAny(get)
-      val mb = manifest[B]
-      if(mb == ma || mb.erasure.isInstance(get))
-        this.asInstanceOf[Maybe[B]]
-      else
-        Failed(
-          new ClassCastException("%s -> %s".format(
-            get.asInstanceOf[AnyRef].getClass.getName,
-            manifest[B].erasure.getName)))
-  }
-
   def flatten1[U](implicit ev: A <:< Maybe[U]): Maybe[U] = ev(get)
 
   def throwMe = throw new Exception(toString)
@@ -260,8 +242,6 @@ case object NoVal extends MaybeOption[Nothing] {
   def finallyMap[B](_finally: (Nothing) ⇒ Unit)(f: (Nothing) ⇒ B) = this
 
   def finallyFlatMap[B](_finally: (Nothing) ⇒ Unit)(f: (Nothing) ⇒ Maybe[B]) = this
-
-  def castTo[B : Manifest] = this
 
   def flatten1[U](implicit ev: <:<[Nothing, Maybe[U]]) = this
 
@@ -311,8 +291,6 @@ final case class Failed(exception: Throwable) extends MaybeEither[Nothing] {
   def finallyMap[B](_finally: (Nothing) ⇒ Unit)(f: (Nothing) ⇒ B) = this
 
   def finallyFlatMap[B](_finally: (Nothing) ⇒ Unit)(f: (Nothing) ⇒ Maybe[B]) = this
-
-  def castTo[B : Manifest] = this
 
   def flatten1[U](implicit ev: <:<[Nothing, Maybe[U]]) = this
 

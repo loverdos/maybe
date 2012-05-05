@@ -94,36 +94,6 @@ class MaybeTest {
   }
 
   @Test
-  def testCastNullToNoVal: Unit = {
-    Assert.assertEquals(NoVal, Just(null).castTo[String])
-  }
-
-  @Test
-  def testCastToCharSequenceSuccess: Unit = {
-    val help = "Help"
-    val aJust: Maybe[_] = Just(help)
-    Assert.assertTrue(aJust.castTo[CharSequence].isJust)
-  }
-
-  @Test
-  def testCastToScalaObjectFailure: Unit = {
-    val help = "Help"
-    val aJust: Maybe[_] = Just(help)
-    Assert.assertTrue(aJust.castTo[ScalaObject].isFailed)
-  }
-
-  @Test
-  def testCastToIntFailure: Unit = {
-    Assert.assertTrue(Just(1).castTo[String].isFailed)
-  }
-
-  @Test
-  def testCastToIntSuccess: Unit = {
-    val cast = Maybe(1).castTo[Int]
-    Assert.assertTrue(cast.isJust)
-  }
-
-  @Test
   def testFinallyMap: Unit = {
     var _flag1 = false
     var _flag2 = false
