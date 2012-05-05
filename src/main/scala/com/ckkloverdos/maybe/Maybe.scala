@@ -144,7 +144,11 @@ object Maybe {
         case _    ⇒ Just(value)
       }
     } catch {
-      case e: Throwable ⇒ Failed(e)
+      case e: Error ⇒
+        throw e
+
+      case e: Throwable ⇒
+        Failed(e)
     }
   }
 }
@@ -166,7 +170,13 @@ final case class Just[+A](get: A) extends MaybeOption[A] with MaybeEither[A] {
 
   def mapJust[B >: A](f: (Just[A]) => Maybe[B]) = {
     try f(this)
-    catch { case e: Exception ⇒ Failed(e) }
+    catch {
+      case e: Error ⇒
+        throw e
+
+      case e: Throwable ⇒
+        Failed(e)
+    }
   }
 
   def mapNoVal[B >: A](f: => Maybe[B]) = this
@@ -188,17 +198,27 @@ final case class Just[+A](get: A) extends MaybeOption[A] with MaybeEither[A] {
   def ||[B >: A](f: ⇒ Maybe[B]) = this
 
   def map[B](f: (A) ⇒ B)= Maybe(f(get))
+
   def flatMap[B](f: (A) ⇒ Maybe[B]) = {
     try f(get)
     catch {
-      case t: Throwable ⇒ Failed(t)
+      case e: Error ⇒
+        throw e
+
+      case e: Throwable ⇒
+        Failed(e)
     }
   }
+
   def filter(f: (A) ⇒ Boolean): Maybe[A] = {
     try {
       if(f(get)) this else NoVal
     } catch {
-      case t: Throwable ⇒ Failed(t)
+      case e: Error ⇒
+        throw e
+
+      case e: Throwable ⇒
+        Failed(e)
     }
   }
   def foreach[U](f: A ⇒ U) = f(get)
@@ -276,7 +296,13 @@ final case class Failed(exception: Throwable) extends MaybeEither[Nothing] {
 
   def mapFailed[B >: Nothing](f: (Failed) => Maybe[B]) = {
     try f(this)
-    catch { case e: Exception ⇒ Failed(e) }
+    catch {
+      case e: Error ⇒
+        throw e
+
+      case e: Throwable ⇒
+        Failed(e)
+    }
   }
 
   def fold[T](onJust: (Nothing) ⇒ T)(onNoVal: ⇒ T)(onFailed: (Failed)⇒ T) = onFailed(this)
@@ -298,8 +324,9 @@ final case class Failed(exception: Throwable) extends MaybeEither[Nothing] {
 
   override def equals(that: Any) = {
     that match {
-      case failed: Failed ⇒
-        this.exception  == failed.exception
+      case Failed(exception) ⇒
+        this.exception == exception
+
       case _ ⇒
         false
     }

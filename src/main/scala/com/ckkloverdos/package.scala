@@ -24,6 +24,9 @@ package object maybe {
         case a    ⇒ Just(a)
       }
     } catch {
+      case e: Error ⇒
+        throw e
+
       case e: Throwable ⇒
         safeUnit(_catch)
         Failed(e)
@@ -38,7 +41,12 @@ package object maybe {
   @inline
   def safeUnit[A](f: ⇒ A): Unit = {
     try f
-    catch { case _ ⇒}
+    catch {
+      case e: Error ⇒
+        throw e
+
+      case _ ⇒
+    }
   }
 
   implicit def optionToMaybe[T](x: Option[T]): MaybeOption[T] = x match {
