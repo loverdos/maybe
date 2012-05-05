@@ -87,13 +87,9 @@ sealed abstract class Maybe[+A] extends Serializable {
   def flatten1[U](implicit ev: A <:< Maybe[U]): Maybe[U]
 
   /**
-   * If this is a [[com.ckkloverdos.maybe.Failed]], throw its exception. Otherwise throw an irrelevant exception.
-   *
-   * This is syntactic sugar for the cases we already know this is a [[com.ckkloverdos.maybe.Failed]].
-   *
-   * @return `Nothing`
+   * If this is a [[com.ckkloverdos.maybe.Failed]], throw its exception. Otherwise do nothing.
    */
-  def throwMe: Nothing
+  def throwMe: Unit
 }
 
 /**
@@ -225,7 +221,7 @@ final case class Just[+A](get: A) extends MaybeOption[A] with MaybeEither[A] {
 
   def flatten1[U](implicit ev: A <:< Maybe[U]): Maybe[U] = ev(get)
 
-  def throwMe = throw new Exception(toString)
+  def throwMe = {}
 
   override def equals(that: Any) =
     that.isInstanceOf[Just[_]] && that.asInstanceOf[Just[_]].get == this.get
@@ -265,7 +261,7 @@ case object NoVal extends MaybeOption[Nothing] {
 
   def flatten1[U](implicit ev: <:<[Nothing, Maybe[U]]) = this
 
-  def throwMe = throw new Exception(toString)
+  def throwMe = {}
 
   override def equals(that: Any) = that.asInstanceOf[AnyRef] eq NoVal
 }
