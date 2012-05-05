@@ -43,35 +43,11 @@ sealed abstract class Maybe[+A] extends Serializable {
 
   def flatMap[B](f: A ⇒ Maybe[B]): Maybe[B]
 
-  @inline
-  final def mapJust[B >: A](f: Just[A] ⇒ Maybe[B]): Maybe[B] =
-    if(isJust) f(this.asInstanceOf[Just[A]]) else this
+  def mapJust[B >: A](f: Just[A] ⇒ Maybe[B]): Maybe[B]
 
-  @inline
-  final def forJust[U](f: Just[A] ⇒ U): this.type = {
-    if(isJust) f(this.asInstanceOf[Just[A]])
-    this
-  }
+  def mapNoVal[B >: A](f: ⇒ Maybe[B]): Maybe[B]
 
-  @inline
-  final def mapNoVal[B >: A](f: ⇒ Maybe[B]): Maybe[B] =
-    if(isNoVal) f else this
-
-  @inline
-  final def forNoVal[U](f: ⇒ U): this.type = {
-    if(isNoVal) f
-    this
-  }
-
-  @inline
-  final def mapFailed[B >: A](f: Failed ⇒ Maybe[B]): Maybe[B] =
-    if(isFailed) f(this.asInstanceOf[Failed]) else this
-
-  @inline
-  final def forFailed[U](f: Failed ⇒ U): this.type = {
-    if(isFailed) f(this.asInstanceOf[Failed])
-    this
-  }
+  def mapFailed[B >: A](f: Failed ⇒ Maybe[B]): Maybe[B]
 
   /**
    * Map or return the provided default value.
@@ -191,6 +167,14 @@ final case class Just[+A](get: A) extends MaybeOption[A] with MaybeEither[A] {
 
   def getOr[B >: A](b: ⇒ B) = get
 
+  def mapJust[B >: A](f: (Just[A]) => Maybe[B]) = {
+    try f(this)
+    catch { case e: Exception ⇒ Failed(e) }
+  }
+
+  def mapNoVal[B >: A](f: => Maybe[B]) = this
+
+  def mapFailed[B >: A](f: (Failed) => Maybe[B]) = this
 
   def finallyMap[B](_finally: A ⇒ Unit)(f: A ⇒ B): Maybe[B] = {
     try this.map(f)
@@ -258,6 +242,12 @@ case object NoVal extends MaybeOption[Nothing] {
 
   def getOr[B >: Nothing](b: ⇒ B) = b
 
+  def mapJust[B >: Nothing](f: (Just[Nothing]) => Maybe[B]) = this
+
+  def mapNoVal[B >: Nothing](f: => Maybe[B]) = f
+
+  def mapFailed[B >: Nothing](f: (Failed) => Maybe[B]) = this
+
   def fold[T](onJust: (Nothing) ⇒ T)(onNoVal: ⇒ T)(onFailed: (Failed)⇒ T) = onNoVal
 
   def ||[B >: Nothing](f: ⇒ Maybe[B]) = f
@@ -299,6 +289,15 @@ final case class Failed(exception: Throwable) extends MaybeEither[Nothing] {
   def toEither: Either[Throwable, Nothing] = Left(exception)
 
   def getOr[B >: Nothing](b: ⇒ B) = b
+
+  def mapJust[B >: Nothing](f: (Just[Nothing]) => Maybe[B]) = this
+
+  def mapNoVal[B >: Nothing](f: => Maybe[B]) = this
+
+  def mapFailed[B >: Nothing](f: (Failed) => Maybe[B]) = {
+    try f(this)
+    catch { case e: Exception ⇒ Failed(e) }
+  }
 
   def fold[T](onJust: (Nothing) ⇒ T)(onNoVal: ⇒ T)(onFailed: (Failed)⇒ T) = onFailed(this)
 
