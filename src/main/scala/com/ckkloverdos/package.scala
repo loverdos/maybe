@@ -51,18 +51,6 @@ package object maybe {
     case Right(right) ⇒ Just(right)
   }
 
-  def sameThrowables(a: Throwable, b: Throwable): Boolean = {
-    (a, b) match {
-      case (null, null) ⇒ true
-      case (null, _)    ⇒ false
-      case (_, null)    ⇒ false
-      case (a, b) ⇒
-        (a.getClass eq b.getClass) &&
-        sameThrowables(a.getCause, b.getCause) &&
-        a.getMessage == b.getMessage
-    }
-  }
-
   def getFromMapAsMaybe[A, B <: AnyRef](map: scala.collection.Map[A, B], key: A): Maybe[B] = Maybe {
    map.get(key) match {
      case Some(value) ⇒
