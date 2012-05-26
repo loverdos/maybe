@@ -111,7 +111,7 @@ class MaybeTest {
       def newCursor = new TesterCursor
     }
 
-    Maybe(new Tester).map(_.newCursor).finallyMap(_.close())(_.doit())
+    Maybe(new Tester).map(_.newCursor).mapFinally(_.close())(_.doit())
     
     Assert.assertEquals(true, _flag1)
     Assert.assertEquals(true, _flag2)
