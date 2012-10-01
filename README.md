@@ -3,7 +3,7 @@ MAYBE
 
 Inspired by Lift's Box, Haskell's Maybe and Scala's Option.
 
-We innovate in a few areas, especially regarding the existing Scala APIs:
+A few noteable characteristics:
 
 * `Maybe()` is a polymorphich constructor that Does The Right Thing, no matter the input.
 * `get` is only provided for a `Just` value, not in the general `Maybe` API.
