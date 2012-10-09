@@ -17,6 +17,15 @@
 package com.ckkloverdos
 
 package object maybe {
+  object JavaLangError {
+    def unapply(e: Throwable): Option[Error] = {
+      e match {
+        case e: Error ⇒ Some(e)
+        case _ ⇒ None
+      }
+    }
+  }
+
   def effect[A](f: ⇒ A)(_catch: ⇒ Unit)(_finally: ⇒ Unit): Maybe[A] = {
     try {
       f match {
@@ -24,7 +33,7 @@ package object maybe {
         case a    ⇒ Just(a)
       }
     } catch {
-      case e: Error ⇒
+      case JavaLangError(e) ⇒
         throw e
 
       case e: Throwable ⇒
@@ -42,7 +51,7 @@ package object maybe {
   def safeUnit[A](f: ⇒ A): Unit = {
     try f
     catch {
-      case e: Error ⇒
+      case JavaLangError(e) ⇒
         throw e
 
       case _ ⇒
