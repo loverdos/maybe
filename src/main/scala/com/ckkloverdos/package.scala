@@ -17,11 +17,22 @@
 package com.ckkloverdos
 
 package object maybe {
-  object JavaLangError {
+  object UnRecoverableException {
     def unapply(e: Throwable): Option[Error] = {
+      require(e ne null, "exception is null")
       e match {
         case e: Error ⇒ Some(e)
         case _ ⇒ None
+      }
+    }
+  }
+
+  object RecoverableException {
+    def unapply(e: Throwable): Option[Throwable] = {
+      require(e ne null, "exception is null")
+      e match {
+        case e: Error ⇒ None
+        case e ⇒ Some(e)
       }
     }
   }
@@ -33,10 +44,7 @@ package object maybe {
         case a    ⇒ Just(a)
       }
     } catch {
-      case JavaLangError(e) ⇒
-        throw e
-
-      case e: Throwable ⇒
+      case RecoverableException(e) ⇒
         safeUnit(_catch)
         Failed(e)
     } finally {
@@ -51,10 +59,8 @@ package object maybe {
   def safeUnit[A](f: ⇒ A): Unit = {
     try f
     catch {
-      case JavaLangError(e) ⇒
-        throw e
-
-      case _ ⇒
+      case RecoverableException(e) ⇒
+        ()
     }
   }
 

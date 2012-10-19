@@ -138,10 +138,7 @@ object Maybe {
         case _    ⇒ Just(value)
       }
     } catch {
-      case e: Error ⇒
-        throw e
-
-      case e: Throwable ⇒
+      case RecoverableException(e) ⇒
         Failed(e)
     }
   }
@@ -183,10 +180,7 @@ final case class Just[+A](get: A) extends MaybeOption[A] with MaybeEither[A] {
   def flatMap[B](f: (A) ⇒ Maybe[B]) = {
     try f(get)
     catch {
-      case e: Error ⇒
-        throw e
-
-      case e: Throwable ⇒
+      case RecoverableException(e) ⇒
         Failed(e)
     }
   }
@@ -195,10 +189,7 @@ final case class Just[+A](get: A) extends MaybeOption[A] with MaybeEither[A] {
     try {
       if(f(get)) this else NoVal
     } catch {
-      case e: Error ⇒
-        throw e
-
-      case e: Throwable ⇒
+      case RecoverableException(e) ⇒
         Failed(e)
     }
   }
