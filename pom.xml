@@ -26,7 +26,7 @@
 
   <groupId>com.ckkloverdos</groupId>
   <artifactId>maybe</artifactId>
-  <version>0.6.0-SNAPSHOT</version>
+  <version>0.6.0</version>
   <packaging>jar</packaging>
 
   <name>Maybe</name>
@@ -67,6 +67,7 @@
     <url>https://loverdos@github.com/loverdos/maybe</url>
     <connection>scm:git:https://loverdos@github.com/loverdos/maybe.git</connection>
     <developerConnection>scm:git:git@github.com:loverdos/maybe.git</developerConnection>
+    <tag>v0.6.0</tag>
   </scm>
 
   <issueManagement>
